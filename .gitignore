@@ -1,6 +1,3 @@
-# Configuration locale du dashboard (contient l'URL et la clé anon du projet)
-frontend/dashboard/config.js
-
 # Bibliothèque vendorée, récupérée via la commande du README
 frontend/dashboard/vendor/
 
