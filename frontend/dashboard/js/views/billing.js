@@ -1,4 +1,4 @@
-// Abonnement : état, choix de formule, portail Stripe (Neon).
+// Abonnement : état, choix de formule SetSmart, portail Stripe (Neon).
 
 import { apiFetch, callApi, isOwner } from "../client.js";
 import {
@@ -57,7 +57,7 @@ export async function renderBilling() {
     "Votre abonnement",
     el("p", {}, [
       badge(STATUS_LABEL[billing.status] ?? billing.status, STATUS_TONE[billing.status] ?? "neutral"),
-      billing.plan ? el("span", { text: ` Formule ${billing.plan}` }) : null,
+      billing.plan ? el("span", { text: ` Formule ${billing.plan.toUpperCase()}` }) : null,
     ]),
     el("p", { class: "muted", text: billing.reason }),
 
@@ -74,7 +74,7 @@ export async function renderBilling() {
       : null,
 
     isOwner()
-      ? asyncButton("Gérer mon abonnement", async () => {
+      ? asyncButton("Gérer mon abonnement (Factures, CB)", async () => {
         mount(feedback);
         try {
           const { url } = await callApi("create_billing_portal", { return_url: returnUrl });
@@ -97,13 +97,13 @@ export async function renderBilling() {
   const planRows = plans.map((plan) => [
     el("div", {}, [
       el("strong", { text: plan.name }),
+      plan.trial_days > 0 ? el("span", { class: "badge badge--info", text: ` ${plan.trial_days}j d'essai` }) : null,
       plan.description ? el("p", { class: "muted", text: plan.description }) : null,
     ]),
     `${formatPrice(plan.monthly_price_cents, plan.currency)} / mois`,
-    plan.max_locations ? `${plan.max_locations} établissement(s)` : "illimité",
     isOwner()
       ? asyncButton(
-        billing.plan === plan.id ? "Formule actuelle" : "Choisir",
+        billing.plan === plan.id ? "Formule actuelle" : (plan.trial_days > 0 ? "Essai gratuit 7j" : "Choisir"),
         async () => {
           mount(feedback);
           try {
@@ -117,7 +117,7 @@ export async function renderBilling() {
             mount(feedback, errorBox(error.message));
           }
         },
-        { class: "btn btn--small", busyLabel: "…" },
+        { class: billing.plan === plan.id ? "btn btn--ghost btn--small" : "btn btn--small", busyLabel: "…" },
       )
       : el("span", { class: "muted", text: "—" }),
   ]);
@@ -127,11 +127,11 @@ export async function renderBilling() {
     suspensionAlert,
     statusCard,
     card(
-      "Formules",
-      table(["Formule", "Tarif", "Établissements", ""], planRows),
+      "Formules d'abonnement",
+      table(["Formule & Quota", "Tarif", ""], planRows),
       el("p", {
         class: "muted",
-        text: "Paiement sécurisé par Stripe. Aucune donnée bancaire ne transite par Setwise.",
+        text: "Paiement sécurisé par Stripe. Sans engagement, annulable à tout moment en 1 clic.",
       }),
     ),
     feedback,

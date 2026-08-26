@@ -244,52 +244,143 @@
 
 <section class="section section--raised" id="tarifs">
   <div class="shell">
-    <p class="eyebrow">Tarifs</p>
-    <h2 class="section__title">14 jours d'essai, sans carte</h2>
+    <div class="tarifs-header">
+      <p class="eyebrow">Tarifs clairs & transparents</p>
+      <h2 class="section__title">Toute la plateforme Setwise.</h2>
+      <p class="section__lede">
+        La seule différence, c'est le nombre de messages IA dont vous avez besoin chaque mois.
+      </p>
+
+      <!-- Toggle Mensuel / Annuel -->
+      <div class="billing-toggle" role="group" aria-label="Fréquence de facturation">
+        <button type="button" class="billing-toggle__btn billing-toggle__btn--active" id="btn-mensuel">Mensuel</button>
+        <button type="button" class="billing-toggle__btn" id="btn-annuel">
+          Annuel <span class="badge-promo">2 mois offerts</span>
+        </button>
+      </div>
+    </div>
 
     <div class="plans">
+      <!-- Plan Light -->
       <article class="plan">
-        <h3 class="plan__name">Starter</h3>
-        <p class="plan__price"><span class="plan__amount">149</span><span class="plan__unit">€ / mois</span></p>
-        <ul class="plan__list">
-          <li>1 établissement</li>
-          <li>Instagram et WhatsApp</li>
-          <li>Qualification et prise de rendez-vous</li>
-          <li>Rappels automatiques</li>
-        </ul>
-        <a class="button button--ghost plan__cta" href="https://dashboard.setwise.fr">Commencer</a>
+        <h3 class="plan__name">Light</h3>
+        <p class="plan__desc">Pour tester l'IA en DM à petit prix.</p>
+        
+        <div class="plan__price-wrap">
+          <p class="plan__price">
+            <span class="plan__amount" data-mensuel="25" data-annuel="20">25</span>
+            <span class="plan__unit">€ /mois</span>
+          </p>
+          <p class="plan__subtext" data-mensuel="Facturé aujourd'hui, sans essai gratuit" data-annuel="250 € /an, facturé annuellement">Facturé aujourd'hui, sans essai gratuit</p>
+        </div>
+
+        <a class="button button--ghost plan__cta" href="/dashboard/#/billing">Commencer →</a>
+
+        <div class="plan__volume">
+          <strong>250 messages IA inclus / mois</strong>
+          <span class="muted">Plafond strict, sans top-up automatique</span>
+        </div>
+
+        <div class="plan__engine-badge">
+          <span class="engine-tag engine-tag--core">SETWISE CORE</span>
+          <span class="engine-desc">Moteur de conversation rapide et efficace</span>
+        </div>
+
+        <div class="plan__features">
+          <p class="plan__features-title">Tout est inclus :</p>
+          <ul class="plan__list">
+            <li>WhatsApp & Instagram DM</li>
+            <li>Qualification IA, prise de RDV & relances</li>
+            <li>Notes vocales & réponses 24/7</li>
+            <li>Intégrations : Google Agenda, Planity, API</li>
+            <li>Support par chat en direct</li>
+          </ul>
+        </div>
       </article>
 
+      <!-- Plan Pro (Le plus populaire) -->
       <article class="plan plan--lead">
-        <p class="plan__tag">Le plus choisi</p>
+        <div class="plan__popular-badge">LE PLUS POPULAIRE</div>
         <h3 class="plan__name">Pro</h3>
-        <p class="plan__price"><span class="plan__amount">299</span><span class="plan__unit">€ / mois</span></p>
-        <ul class="plan__list">
-          <li>Jusqu'à 3 établissements</li>
-          <li>Tout ce que contient Starter</li>
-          <li>Relance des absentes</li>
-          <li>Avis Google et réactivation</li>
-        </ul>
-        <a class="button button--primary plan__cta" href="https://dashboard.setwise.fr">Commencer</a>
+        <p class="plan__desc">L'IA complète et sans plafond — le forfait de la plupart des instituts.</p>
+        
+        <div class="plan__price-wrap">
+          <p class="plan__price">
+            <span class="plan__amount" data-mensuel="97" data-annuel="80">97</span>
+            <span class="plan__unit">€ /mois</span>
+          </p>
+          <p class="plan__subtext" data-mensuel="7 jours d'essai gratuit, puis facturation mensuelle" data-annuel="970 € /an après 7 jours d'essai">7 jours d'essai gratuit, puis facturation mensuelle</p>
+        </div>
+
+        <a class="button button--primary plan__cta" href="/dashboard/#/billing">Démarrer l'essai gratuit de 7 jours →</a>
+
+        <div class="plan__volume">
+          <strong>1 000 messages IA inclus / mois</strong>
+          <span class="muted">puis top-ups auto à 100€ les 1 000</span>
+        </div>
+
+        <div class="plan__engine-badge">
+          <span class="engine-tag engine-tag--advanced">SETWISE ADVANCED</span>
+          <span class="engine-desc">Notre moteur de conversation le plus performant, affiné sur de vraies conversations</span>
+        </div>
+
+        <div class="plan__features">
+          <p class="plan__features-title">Tout est inclus :</p>
+          <ul class="plan__list">
+            <li>WhatsApp & Instagram DM</li>
+            <li>Qualification IA, prise de RDV & relances</li>
+            <li>Notes vocales, analyse d'images & 24/7</li>
+            <li>Intégrations : Google Agenda, Planity, API</li>
+            <li>Support prioritaire en direct</li>
+          </ul>
+        </div>
       </article>
 
+      <!-- Plan Scale -->
       <article class="plan">
-        <h3 class="plan__name">Multi-sites</h3>
-        <p class="plan__price"><span class="plan__amount">599</span><span class="plan__unit">€ / mois</span></p>
-        <ul class="plan__list">
-          <li>Établissements illimités</li>
-          <li>Tout ce que contient Pro</li>
-          <li>Mise en place accompagnée</li>
-        </ul>
-        <a class="button button--ghost plan__cta" href="mailto:contact@setwise.fr?subject=Setwise%20Multi-sites">Nous écrire</a>
+        <h3 class="plan__name">Scale</h3>
+        <p class="plan__desc">Pour les entreprises en croissance avec un volume régulier.</p>
+        
+        <div class="plan__price-wrap">
+          <p class="plan__price">
+            <span class="plan__amount" data-mensuel="297" data-annuel="247">297</span>
+            <span class="plan__unit">€ /mois</span>
+          </p>
+          <p class="plan__subtext" data-mensuel="7 jours d'essai gratuit, puis facturation mensuelle" data-annuel="2 970 € /an après 7 jours d'essai">7 jours d'essai gratuit, puis facturation mensuelle</p>
+        </div>
+
+        <a class="button button--ghost plan__cta" href="/dashboard/#/billing">Démarrer l'essai gratuit de 7 jours →</a>
+
+        <div class="plan__volume">
+          <strong>4 000 messages IA inclus / mois</strong>
+          <span class="muted">puis top-ups auto à 70€ les 1 000</span>
+        </div>
+
+        <div class="plan__engine-badge">
+          <span class="engine-tag engine-tag--advanced">SETWISE ADVANCED</span>
+          <span class="engine-desc">Notre moteur de conversation le plus performant pour fort volume</span>
+        </div>
+
+        <div class="plan__features">
+          <p class="plan__features-title">Tout est inclus :</p>
+          <ul class="plan__list">
+            <li>WhatsApp & Instagram DM</li>
+            <li>Qualification IA, prise de RDV & relances</li>
+            <li>Notes vocales, analyse d'images & 24/7</li>
+            <li>Intégrations : Google Agenda, Planity, API</li>
+            <li>Account manager dédié & onboarding VIP</li>
+          </ul>
+        </div>
       </article>
     </div>
 
-    <p class="plans__note">
-      Un rendez-vous de plus par semaine couvre l'abonnement. Vérifiez-le sur
-      vos chiffres : le tableau de bord compte les leads reçus, les leads
-      qualifiés et les rendez-vous pris.
-    </p>
+    <div class="reassurance-bar">
+      <span>🛡️ Sans engagement</span>
+      <span>•</span>
+      <span>Annulable à tout moment</span>
+      <span>•</span>
+      <span>Top-ups ajoutés automatiquement à mesure que vous grandissez</span>
+    </div>
   </div>
 </section>
 
