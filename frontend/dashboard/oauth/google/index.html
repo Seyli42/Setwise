@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Connexion de l'agenda — Setwise</title>
+<meta name="robots" content="noindex, nofollow">
+<link rel="stylesheet" href="../../styles.css">
+</head>
+<body>
+
+<!--
+  Page de retour OAuth Google.
+
+  Elle existe parce que `GOOGLE_REDIRECT_URI` pointe ici : sans ce fichier,
+  Google renvoyait le gérant sur un 404 et le code d'autorisation n'était
+  récupérable que dans la barre d'adresse d'une page d'erreur.
+
+  Le chemin doit rester `/oauth/google` — il est déclaré à l'identique dans la
+  console Google Cloud et dans `config.js`. Le renommer casse la connexion de
+  tous les instituts.
+
+  L'échange se fait ici, automatiquement. Le champ de saisie manuelle reste
+  disponible dans l'écran Connexions comme voie de secours.
+-->
+
+<main class="centered">
+  <section class="card" id="etat">
+    <h2 class="card__title">Connexion de l'agenda</h2>
+    <p class="loading">Échange du code en cours…</p>
+  </section>
+</main>
+
+<script type="module" src="callback.js"></script>
+</body>
+</html>

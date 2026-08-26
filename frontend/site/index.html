@@ -1,0 +1,359 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Setwise</title>
+<meta name="description" content="Setwise répond à vos DM Instagram en moins d'une minute, qualifie chaque personne selon vos questions et réserve dans votre agenda. Pour les instituts de beauté et centres d'esthétique.">
+<meta name="theme-color" content="#0E1420">
+<link rel="canonical" href="https://setwise.fr/">
+<meta property="og:title" content="Setwise">
+<meta property="og:description" content="Vos DM Instagram deviennent des rendez-vous. Même à 23 h.">
+<meta property="og:type" content="website">
+<meta property="og:locale" content="fr_FR">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+<a class="skip" href="#contenu">Aller au contenu</a>
+
+<header class="topbar">
+  <a class="topbar__brand" href="/">
+    <span class="topbar__mark" aria-hidden="true"></span>
+    Setwise
+  </a>
+  <nav class="topbar__nav" aria-label="Navigation principale">
+    <a href="#methode">La méthode</a>
+    <a href="#limites">Ce qu'il ne fait pas</a>
+    <a href="#tarifs">Tarifs</a>
+  </nav>
+  <a class="button button--ghost" href="https://dashboard.setwise.fr">Se connecter</a>
+</header>
+
+<main id="contenu">
+
+<!-- ─────────────────────────────────────────────────────────
+     Héros : le produit se démontre. Le fil est dans le HTML,
+     l'animation ne fait que le révéler — sans JS ni animation,
+     la conversation complète reste lisible.
+────────────────────────────────────────────────────────── -->
+<section class="hero">
+  <div class="shell hero__grid">
+
+    <div class="hero__text">
+      <p class="eyebrow">Instituts de beauté &amp; centres d'esthétique</p>
+      <h1 class="hero__title">Vos DM deviennent des rendez-vous.<em> Même à 23&nbsp;h.</em></h1>
+      <p class="hero__lede">
+        Pendant que vous fermez la cabine, quelqu'un répond à votre place.
+        Il pose vos questions, lit votre agenda, et réserve le créneau.
+      </p>
+      <div class="hero__cta">
+        <a class="button button--primary" href="https://dashboard.setwise.fr">Essayer 14 jours</a>
+        <p class="hero__fine">Sans carte bancaire. Branché en 15 minutes.</p>
+      </div>
+    </div>
+
+    <figure class="thread" aria-label="Exemple de conversation Instagram traitée automatiquement">
+      <figcaption class="thread__head">
+        <span class="thread__avatar" aria-hidden="true">CM</span>
+        <span class="thread__who">camille_mrn</span>
+        <span class="thread__live"><i aria-hidden="true"></i>Instagram</span>
+      </figcaption>
+
+      <ol class="thread__body">
+        <li class="bubble bubble--them" style="--i:0">
+          <p>Bonsoir, vous faites l'épilation laser des jambes&nbsp;? C'est combien&nbsp;?</p>
+          <time datetime="23:04">23:04</time>
+        </li>
+        <li class="bubble bubble--us" style="--i:1">
+          <p>Bonsoir Camille&nbsp;! Demi-jambes 20&nbsp;€ la séance, jambes entières 30&nbsp;€. Vous visez laquelle&nbsp;?</p>
+          <time datetime="23:04">23:04</time>
+        </li>
+        <li class="bubble bubble--them" style="--i:2">
+          <p>Jambes entières</p>
+          <time datetime="23:05">23:05</time>
+        </li>
+        <li class="bubble bubble--us" style="--i:3">
+          <p>30&nbsp;€ la séance alors, comptez 45&nbsp;min. Vous voulez que je vous réserve un créneau&nbsp;?</p>
+          <time datetime="23:05">23:05</time>
+        </li>
+        <li class="bubble bubble--them" style="--i:4">
+          <p>Oui, samedi matin si possible</p>
+          <time datetime="23:06">23:06</time>
+        </li>
+        <li class="bubble bubble--us" style="--i:5">
+          <p>Samedi 10&nbsp;h, ça vous convient&nbsp;?</p>
+          <time datetime="23:06">23:06</time>
+        </li>
+        <li class="bubble bubble--them" style="--i:6">
+          <p>Parfait&nbsp;!</p>
+          <time datetime="23:07">23:07</time>
+        </li>
+      </ol>
+
+      <p class="thread__done" style="--i:7">
+        <span class="thread__check" aria-hidden="true"></span>
+        Samedi 10:00 — inscrit dans votre agenda
+      </p>
+    </figure>
+
+  </div>
+</section>
+
+<!-- ─────────────────────────────────────────────────────────
+     Le problème, rendu typographiquement : le silence entre
+     deux horaires est la chose que le produit supprime.
+────────────────────────────────────────────────────────── -->
+<section class="section section--raised">
+  <div class="shell">
+    <h2 class="section__title">Votre publicité fonctionne.<br>C'est l'attente qui vous coûte.</h2>
+
+    <div class="gap">
+      <ol class="gap__line">
+        <li class="gap__moment">
+          <time class="gap__hour" datetime="14:10">14:10</time>
+          <p class="gap__what">Elle vous écrit. Vous êtes en cabine.</p>
+        </li>
+        <li class="gap__void">
+          <p><strong>5&nbsp;h&nbsp;30 de silence.</strong> Elle a écrit à trois autres instituts.</p>
+        </li>
+        <li class="gap__moment">
+          <time class="gap__hour" datetime="19:40">19:40</time>
+          <p class="gap__what">Vous lisez. Elle a pris rendez-vous ailleurs.</p>
+        </li>
+      </ol>
+
+      <aside class="gap__stat">
+        <p class="gap__figure">×10</p>
+        <p class="gap__legend">
+          L'écart de conversion entre un lead recontacté dans les cinq minutes
+          et un lead recontacté plus tard. Vous avez payé la publicité qui l'a
+          amenée jusqu'à vous.
+        </p>
+      </aside>
+    </div>
+  </div>
+</section>
+
+<!-- ─────────────────────────────────────────────────────────
+     Étapes marquées par l'heure, pas par 01/02/03 : le numéro
+     n'apprendrait rien, l'horodatage prouve la promesse.
+────────────────────────────────────────────────────────── -->
+<section class="section" id="methode">
+  <div class="shell">
+    <p class="eyebrow">La méthode</p>
+    <h2 class="section__title">Quatre minutes, sans vous</h2>
+
+    <ol class="beats">
+      <li class="beat">
+        <time class="beat__hour" datetime="23:04">23:04</time>
+        <div class="beat__body">
+          <h3>Elle écrit</h3>
+          <p>Un DM après votre publicité. La réponse part en moins d'une minute, dans le ton que vous avez choisi.</p>
+        </div>
+      </li>
+      <li class="beat">
+        <time class="beat__hour" datetime="23:05">23:05</time>
+        <div class="beat__body">
+          <h3>Elle est qualifiée</h3>
+          <p>Vos questions, dans votre ordre : prestation, zone, disponibilités, budget. Vous écrivez la liste, vous la changez quand vous voulez.</p>
+        </div>
+      </li>
+      <li class="beat">
+        <time class="beat__hour" datetime="23:07">23:07</time>
+        <div class="beat__body">
+          <h3>Le créneau est pris</h3>
+          <p>Votre agenda est lu avant chaque proposition. Jamais un horaire que vous ne pouvez pas honorer.</p>
+        </div>
+      </li>
+      <li class="beat">
+        <time class="beat__hour" datetime="23:07">23:07</time>
+        <div class="beat__body">
+          <h3>Elle reçoit sa confirmation</h3>
+          <p>Sur WhatsApp, avec un rappel la veille. Moins d'absences, sans que vous y pensiez.</p>
+        </div>
+      </li>
+    </ol>
+  </div>
+</section>
+
+<!-- ─────────────────────────────────────────────────────────
+     Différenciateur de confiance : ce qu'il refuse de faire.
+────────────────────────────────────────────────────────── -->
+<section class="section section--raised" id="limites">
+  <div class="shell">
+    <p class="eyebrow">Ce qu'il ne fait pas</p>
+    <h2 class="section__title">Il sait s'arrêter.<br>C'est ce qui compte le plus.</h2>
+    <p class="section__lede">
+      Un assistant qui répond à tout finit par répondre n'importe quoi.
+      Dans ces quatre cas, il se tait et vous prévient.
+    </p>
+
+    <ul class="stops">
+      <li class="stop">
+        <h3>Une question médicale</h3>
+        <p>Contre-indication, grossesse, traitement en cours. Il ne donne aucun avis. Vous répondez, vous seule.</p>
+      </li>
+      <li class="stop">
+        <h3>Un mécontentement</h3>
+        <p>Réclamation, demande de remboursement, litige. Vous reprenez la main immédiatement.</p>
+      </li>
+      <li class="stop">
+        <h3>Une photo</h3>
+        <p>Elle envoie la zone à traiter. Il ne fait pas semblant de comprendre : il vous la transmet.</p>
+      </li>
+      <li class="stop">
+        <h3>Tout le reste</h3>
+        <p>Ce qui sort de vos questions vous revient. Il ne devine jamais.</p>
+      </li>
+    </ul>
+
+    <p class="stops__note">
+      Tant que vous n'avez pas rendu la main, il reste silencieux sur cette
+      conversation. Reprendre tout seul après un sujet médical serait
+      exactement l'erreur à ne pas commettre.
+    </p>
+  </div>
+</section>
+
+<section class="section">
+  <div class="shell">
+    <p class="eyebrow">Après le rendez-vous</p>
+    <h2 class="section__title">Le travail continue</h2>
+
+    <div class="afters">
+      <article class="after">
+        <h3>Rappel la veille</h3>
+        <p>Un message WhatsApp automatique. Le meilleur remède contre les absences.</p>
+      </article>
+      <article class="after">
+        <h3>Relance des absentes</h3>
+        <p>Elle n'est pas venue. Un nouveau créneau lui est proposé, sans le moindre reproche.</p>
+      </article>
+      <article class="after">
+        <h3>Avis Google</h3>
+        <p>Il demande d'abord si tout s'est bien passé. Et n'invite à laisser un avis que les clientes satisfaites.</p>
+      </article>
+      <article class="after">
+        <h3>Réactivation</h3>
+        <p>Celles qui s'étaient renseignées sans jamais venir sont recontactées. Une fois, jamais deux.</p>
+      </article>
+    </div>
+  </div>
+</section>
+
+<section class="section section--raised" id="tarifs">
+  <div class="shell">
+    <p class="eyebrow">Tarifs</p>
+    <h2 class="section__title">14 jours d'essai, sans carte</h2>
+
+    <div class="plans">
+      <article class="plan">
+        <h3 class="plan__name">Starter</h3>
+        <p class="plan__price"><span class="plan__amount">149</span><span class="plan__unit">€ / mois</span></p>
+        <ul class="plan__list">
+          <li>1 établissement</li>
+          <li>Instagram et WhatsApp</li>
+          <li>Qualification et prise de rendez-vous</li>
+          <li>Rappels automatiques</li>
+        </ul>
+        <a class="button button--ghost plan__cta" href="https://dashboard.setwise.fr">Commencer</a>
+      </article>
+
+      <article class="plan plan--lead">
+        <p class="plan__tag">Le plus choisi</p>
+        <h3 class="plan__name">Pro</h3>
+        <p class="plan__price"><span class="plan__amount">299</span><span class="plan__unit">€ / mois</span></p>
+        <ul class="plan__list">
+          <li>Jusqu'à 3 établissements</li>
+          <li>Tout ce que contient Starter</li>
+          <li>Relance des absentes</li>
+          <li>Avis Google et réactivation</li>
+        </ul>
+        <a class="button button--primary plan__cta" href="https://dashboard.setwise.fr">Commencer</a>
+      </article>
+
+      <article class="plan">
+        <h3 class="plan__name">Multi-sites</h3>
+        <p class="plan__price"><span class="plan__amount">599</span><span class="plan__unit">€ / mois</span></p>
+        <ul class="plan__list">
+          <li>Établissements illimités</li>
+          <li>Tout ce que contient Pro</li>
+          <li>Mise en place accompagnée</li>
+        </ul>
+        <a class="button button--ghost plan__cta" href="mailto:contact@setwise.fr?subject=Setwise%20Multi-sites">Nous écrire</a>
+      </article>
+    </div>
+
+    <p class="plans__note">
+      Un rendez-vous de plus par semaine couvre l'abonnement. Vérifiez-le sur
+      vos chiffres : le tableau de bord compte les leads reçus, les leads
+      qualifiés et les rendez-vous pris.
+    </p>
+  </div>
+</section>
+
+<section class="section" id="questions">
+  <div class="shell shell--narrow">
+    <p class="eyebrow">Questions</p>
+    <h2 class="section__title">Ce qu'on nous demande</h2>
+
+    <div class="faq">
+      <details class="qa">
+        <summary>Mes clientes vont s'en apercevoir&nbsp;?</summary>
+        <p>Il se présente comme l'assistant de votre institut. Si on lui demande directement s'il est un robot, il répond honnêtement — mentir là-dessus se retourne toujours contre l'établissement.</p>
+      </details>
+
+      <details class="qa">
+        <summary>Je n'utilise pas Google Agenda</summary>
+        <p>Avec Google Agenda, la réservation est entièrement automatique. Avec Planity ou un autre logiciel, il lit votre flux de synchronisation, propose des créneaux réellement libres, puis vous transmet le choix de la cliente pour que vous confirmiez. Il ne lui annonce jamais un rendez-vous qui n'existe pas.</p>
+      </details>
+
+      <details class="qa">
+        <summary>Que deviennent les données de mes clientes&nbsp;?</summary>
+        <p>Elles restent hébergées dans l'Union européenne. Vous supprimez les données d'une personne en un clic depuis le tableau de bord, et tout s'efface automatiquement après la durée de conservation que vous fixez.</p>
+      </details>
+
+      <details class="qa">
+        <summary>Combien de temps pour l'installer&nbsp;?</summary>
+        <p>Une quinzaine de minutes : connecter Instagram, connecter WhatsApp Business, connecter votre agenda, écrire vos questions. Une liste de questions par défaut est fournie — vous n'arrivez pas devant une page blanche.</p>
+      </details>
+
+      <details class="qa">
+        <summary>Je peux modifier ce qu'il dit&nbsp;?</summary>
+        <p>Quand vous voulez, depuis le tableau de bord : le ton, les questions, leur ordre, vos horaires, la durée de chaque prestation, les sujets qui doivent vous être transmis tout de suite. La modification s'applique au message suivant.</p>
+      </details>
+
+      <details class="qa">
+        <summary>Et si j'arrête&nbsp;?</summary>
+        <p>Vous résiliez depuis votre espace, sans préavis. Vos conversations et vos rendez-vous restent consultables jusqu'à la fin de la période payée.</p>
+      </details>
+    </div>
+  </div>
+</section>
+
+<section class="closing">
+  <div class="shell shell--narrow">
+    <h2 class="closing__title">Les DM que vous n'avez pas lus ce soir ne reviendront pas demain.</h2>
+    <a class="button button--primary button--wide" href="https://dashboard.setwise.fr">Essayer 14 jours</a>
+    <p class="hero__fine">Sans carte bancaire. Résiliable en un clic.</p>
+  </div>
+</section>
+
+</main>
+
+<footer class="footer">
+  <div class="shell footer__inner">
+    <p class="footer__brand">Setwise <span class="footer__year">© <span id="year">2026</span></span></p>
+    <nav aria-label="Liens de pied de page">
+      <a href="/cgv.html">Conditions générales</a>
+      <a href="/mentions-legales.html">Mentions légales</a>
+      <a href="/confidentialite.html">Confidentialité</a>
+      <a href="mailto:contact@setwise.fr">contact@setwise.fr</a>
+    </nav>
+  </div>
+</footer>
+
+<script src="site.js" defer></script>
+</body>
+</html>

@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Connexion Instagram — Setwise</title>
+<meta name="robots" content="noindex, nofollow">
+<link rel="stylesheet" href="../../styles.css">
+</head>
+<body>
+
+<!--
+  Page de retour OAuth Meta.
+
+  Le chemin `/oauth/meta` est déclaré à l'identique dans la configuration de
+  l'application Meta et dans `config.js`. Le renommer casse la connexion de
+  tous les instituts.
+
+  Aucun jeton ne transite ici : la page passe le `code` à `dashboard-api`, qui
+  détient le secret d'application et fait tous les échanges côté serveur.
+-->
+
+<main class="centered">
+  <section class="card" id="etat">
+    <h2 class="card__title">Connexion Instagram</h2>
+    <p class="loading">Récupération de vos comptes…</p>
+  </section>
+</main>
+
+<script type="module" src="callback.js"></script>
+</body>
+</html>
