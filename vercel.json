@@ -1,34 +1,11 @@
 {
-  "cleanUrls": true,
-  "trailingSlash": false,
-  "rewrites": [
-    {
-      "source": "/dashboard",
-      "destination": "/frontend/dashboard/index.html"
-    },
-    {
-      "source": "/dashboard/:path*",
-      "destination": "/frontend/dashboard/:path*"
-    },
-    {
-      "source": "/oauth/:path*",
-      "destination": "/frontend/dashboard/oauth/:path*"
-    },
-    {
-      "source": "/confidentialite",
-      "destination": "/frontend/site/confidentialite.html"
-    },
-    {
-      "source": "/cgv",
-      "destination": "/frontend/site/cgv.html"
-    },
-    {
-      "source": "/mentions-legales",
-      "destination": "/frontend/site/mentions-legales.html"
-    },
-    {
-      "source": "/(.*)",
-      "destination": "/frontend/site/$1"
-    }
+  "routes": [
+    { "src": "^/dashboard/?$", "dest": "/frontend/dashboard/index.html" },
+    { "src": "^/dashboard/(.*)$", "dest": "/frontend/dashboard/$1" },
+    { "src": "^/oauth/(.*)$", "dest": "/frontend/dashboard/oauth/$1" },
+    { "src": "^/confidentialite/?$", "dest": "/frontend/site/confidentialite.html" },
+    { "src": "^/cgv/?$", "dest": "/frontend/site/cgv.html" },
+    { "src": "^/mentions-legales/?$", "dest": "/frontend/site/mentions-legales.html" },
+    { "src": "^/(.*)$", "dest": "/frontend/site/$1" }
   ]
 }
