@@ -1,231 +1,320 @@
-// Configuration de l'agent : script de qualification, horaires, prestations.
-//
-// C'est la page qui rend la promesse « paramétrable sans redéploiement »
-// concrète. Tout ce qui est saisi ici part en base et s'applique au message
-// suivant.
+// Configuration visuelle et interactive de l'agent IA (Générateur automatique de Prompt).
 
 import { fetchAgent, saveAgent, saveScript } from "../api.js";
-import {
-  duplicateFields,
-  intervalsToText,
-  keywordsToText,
-  questionsToText,
-  servicesToText,
-  textToIntervals,
-  textToKeywords,
-  textToQuestions,
-  textToServices,
-} from "../parse.js";
-import {
-  asyncButton,
-  card,
-  el,
-  errorBox,
-  field,
-  mount,
-  successBox,
-} from "../dom.js";
+import { asyncButton, badge, card, el, errorBox, field, mount, successBox } from "../dom.js";
 
-const DAYS = [
-  ["mon", "Lundi"],
-  ["tue", "Mardi"],
-  ["wed", "Mercredi"],
-  ["thu", "Jeudi"],
-  ["fri", "Vendredi"],
-  ["sat", "Samedi"],
-  ["sun", "Dimanche"],
+const TONES = [
+  {
+    id: "chaleureux",
+    title: "🌸 Chaleureux & Doux",
+    desc: "Vouvoiement bienveillant, ton cocooning et attentionné. Idéal spas et instituts de beauté.",
+    promptPart: "Adopte un ton très chaleureux, doux et bienveillant, comme une esthéticienne passionnée et accueillante.",
+  },
+  {
+    id: "prestige",
+    title: "💎 Prestige & Élégant",
+    desc: "Vouvoiement raffiné, vocabulaire soigné et prestigieux. Idéal cliniques et centres VIP.",
+    promptPart: "Adopte un ton élégant, courtois et prestigieux, digne d'un établissement haut de gamme.",
+  },
+  {
+    id: "dynamique",
+    title: "⚡ Direct & Efficace",
+    desc: "Court, dynamique et va droit au but vers la réservation. Idéal centres d'épilation et minceur.",
+    promptPart: "Sois concise, directe et dynamique. Réponds en 1 à 2 phrases percutantes et oriente vite vers le créneau.",
+  },
+  {
+    id: "expert",
+    title: "🩺 Expert & Rassurant",
+    desc: "Professionnel, précis sur les soins et très rassurant. Idéal dermatologie et soins experts.",
+    promptPart: "Adopte une posture d'experte bienveillante, précise sur les protocoles et rassurante.",
+  },
+];
+
+const DEFAULT_QUESTIONS = [
+  { field: "prestation", prompt: "Quelle prestation souhaitez-vous réaliser ?", enabled: true },
+  { field: "zone", prompt: "Pour quelle zone du corps ou du visage ?", enabled: true },
+  { field: "disponibilite", prompt: "Quels sont vos jours et créneaux horaires préférés ?", enabled: true },
+  { field: "premiere_visite", prompt: "Est-ce votre première visite dans notre institut ?", enabled: false },
+  { field: "contre_indications", prompt: "Avez-vous une contre-indication particulière (grossesse, traitement en cours) ?", enabled: true },
 ];
 
 export async function renderAgent() {
   const loaded = await fetchAgent();
 
-  if (!loaded?.agent) {
-    return card(
-      "Agent",
-      errorBox("Aucun agent de qualification trouvé pour cet institut."),
-    );
-  }
-
-  const { agent, script } = loaded;
+  const feedback = el("div", { class: "feedback" });
+  const agent = loaded?.agent ?? { id: "agt-1", name: "Assistante IA" };
   const config = agent.config ?? {};
   const scheduling = config.scheduling ?? {};
-  const feedback = el("div", { class: "feedback" });
 
-  // --- Persona et messages ------------------------------------------------
-  const promptInput = el("textarea", { rows: 5, value: agent.system_prompt_template ?? "" });
-  const handoffInput = el("input", { type: "text", value: config.handoff_message ?? "" });
-  const confirmTemplateInput = el("input", {
+  // État local du formulaire
+  let selectedTone = config.tone_id ?? "chaleureux";
+  let assistantName = config.assistant_name ?? "Clara";
+  let specialInstructions = config.special_instructions ?? "Mentionner que nous utilisons des cires bio et des lasers de dernière génération.";
+  let handoffMessage = config.handoff_message ?? "Je transmets votre demande à notre équipe qui revient vers vous très vite !";
+
+  let questions = (loaded?.script?.questions?.length > 0)
+    ? loaded.script.questions.map((q) => ({ field: q.field, prompt: q.prompt, enabled: true }))
+    : [...DEFAULT_QUESTIONS];
+
+  let services = (scheduling.services && Object.keys(scheduling.services).length > 0)
+    ? Object.entries(scheduling.services).map(([name, s]) => ({ name, duration: (typeof s === "number" ? s : s?.duration_min) || 45, price: (typeof s === "object" ? s?.price : 0) || 60 }))
+    : [
+      { name: "Épilation laser demi-jambes", duration: 30, price: 90 },
+      { name: "Soin Hydra-Facial Éclat", duration: 45, price: 85 },
+      { name: "Massage relaxant corps", duration: 60, price: 75 },
+    ];
+
+  // 1. Carte Identité & Ton
+  const nameInput = el("input", {
     type: "text",
-    value: config.whatsapp_confirmation_template ?? "",
+    value: assistantName,
+    placeholder: "Ex: Clara, Emma, Sophie...",
+    on: { input: (e) => { assistantName = e.target.value; updatePromptPreview(); } },
   });
-  const reminderTemplateInput = el("input", {
+
+  const toneGrid = el("div", { style: "display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1rem; margin-top: .75rem;" });
+
+  function renderToneCards() {
+    mount(
+      toneGrid,
+      TONES.map((t) => {
+        const isSelected = selectedTone === t.id;
+        return el("div", {
+          style: `border: 2px solid ${isSelected ? "#000" : "var(--border)"}; background: ${isSelected ? "#f8fafc" : "var(--surface)"}; padding: 1rem; border-radius: 10px; cursor: pointer; transition: all .2s;`,
+          on: {
+            click: () => {
+              selectedTone = t.id;
+              renderToneCards();
+              updatePromptPreview();
+            },
+          },
+        }, [
+          el("strong", { style: "display: block; font-size: 1rem; margin-bottom: .25rem;", text: t.title }),
+          el("p", { class: "muted", style: "font-size: .82rem; line-height: 1.35;", text: t.desc }),
+        ]);
+      }),
+    );
+  }
+  renderToneCards();
+
+  const instructionsInput = el("textarea", {
+    rows: 3,
+    value: specialInstructions,
+    placeholder: "Ex: Nous offrons le diagnostic de peau lors du premier RDV...",
+    on: { input: (e) => { specialInstructions = e.target.value; updatePromptPreview(); } },
+  });
+
+  // 2. Carte Prestations
+  const servicesContainer = el("div", { style: "display: flex; flex-direction: column; gap: .75rem;" });
+
+  function renderServicesList() {
+    mount(
+      servicesContainer,
+      services.map((s, idx) => {
+        const nameIn = el("input", {
+          type: "text",
+          value: s.name,
+          placeholder: "Nom de la prestation",
+          style: "flex: 2;",
+          on: { input: (e) => { s.name = e.target.value; updatePromptPreview(); } },
+        });
+        const durIn = el("input", {
+          type: "number",
+          value: String(s.duration),
+          placeholder: "Durée (min)",
+          style: "flex: 1;",
+          on: { input: (e) => { s.duration = Number(e.target.value) || 30; } },
+        });
+        const delBtn = el("button", {
+          type: "button",
+          class: "btn btn--ghost btn--small",
+          style: "color: #dc2626;",
+          text: "Supprimer",
+          on: {
+            click: () => {
+              services.splice(idx, 1);
+              renderServicesList();
+              updatePromptPreview();
+            },
+          },
+        });
+        return el("div", { style: "display: flex; gap: .5rem; align-items: center;" }, [nameIn, durIn, el("span", { class: "muted", text: "min" }), delBtn]);
+      }),
+    );
+  }
+  renderServicesList();
+
+  const addServiceBtn = el("button", {
+    type: "button",
+    class: "btn btn--ghost btn--small",
+    style: "margin-top: .5rem; align-self: flex-start;",
+    text: "+ Ajouter une prestation",
+    on: {
+      click: () => {
+        services.push({ name: "Nouveau soin", duration: 45, price: 60 });
+        renderServicesList();
+        updatePromptPreview();
+      },
+    },
+  });
+
+  // 3. Carte Questions de Qualification
+  const questionsContainer = el("div", { style: "display: flex; flex-direction: column; gap: .75rem;" });
+
+  function renderQuestionsList() {
+    mount(
+      questionsContainer,
+      questions.map((q, idx) => {
+        const check = el("input", {
+          type: "checkbox",
+          on: {
+            change: (e) => {
+              q.enabled = e.target.checked;
+              updatePromptPreview();
+            },
+          },
+        });
+        if (q.enabled) check.checked = true;
+
+        const promptIn = el("input", {
+          type: "text",
+          value: q.prompt,
+          style: "flex: 1;",
+          on: { input: (e) => { q.prompt = e.target.value; updatePromptPreview(); } },
+        });
+
+        return el("div", { style: "display: flex; gap: .75rem; align-items: center;" }, [
+          check,
+          el("strong", { style: "font-size: .85rem; width: 110px; color: var(--muted);", text: q.field }),
+          promptIn,
+        ]);
+      }),
+    );
+  }
+  renderQuestionsList();
+
+  // 4. Carte Relais Humain & Sécurité Médicale
+  const handoffInput = el("input", {
     type: "text",
-    value: config.whatsapp_reminder_template ?? "",
+    value: handoffMessage,
+    on: { input: (e) => { handoffMessage = e.target.value; } },
   });
 
-  // --- Horaires -----------------------------------------------------------
-  const dayInputs = new Map();
-  const hoursFields = DAYS.map(([key, label]) => {
-    const input = el("input", {
-      type: "text",
-      value: intervalsToText(scheduling.business_hours?.[key]),
-      placeholder: "09:00-12:00, 14:00-19:00",
-    });
-    dayInputs.set(key, input);
-    return field(label, input);
+  // 5. Générateur & Visualiseur de Prompt
+  const previewBox = el("pre", {
+    style: "background: #0f172a; color: #f8fafc; padding: 1.25rem; border-radius: 8px; font-size: .82rem; line-height: 1.5; max-height: 220px; overflow-y: auto; white-space: pre-wrap; font-family: monospace;",
   });
 
-  // --- Prestations et règles ---------------------------------------------
-  const servicesInput = el("textarea", {
-    rows: 6,
-    value: servicesToText(scheduling.services),
-    placeholder: "Épilation laser jambes entières : 45",
-  });
-  const defaultDurationInput = el("input", {
-    type: "number",
-    value: String(scheduling.default_duration_min ?? 60),
-  });
-  const granularityInput = el("input", {
-    type: "number",
-    value: String(scheduling.slot_granularity_min ?? 30),
-  });
-  const noticeInput = el("input", {
-    type: "number",
-    value: String(scheduling.min_notice_hours ?? 4),
-  });
-  const horizonInput = el("input", {
-    type: "number",
-    value: String(scheduling.max_days_ahead ?? 14),
-  });
+  function generateCompiledPrompt() {
+    const toneObj = TONES.find((t) => t.id === selectedTone) ?? TONES[0];
+    const activeQuestions = questions.filter((q) => q.enabled);
+    const servicesList = services.map((s) => `- ${s.name} (durée : ${s.duration} min)`).join("\n");
 
-  // --- Script -------------------------------------------------------------
-  const questionsInput = el("textarea", {
-    rows: 8,
-    value: questionsToText(script?.questions),
-    placeholder: "prestation | Quelle prestation vous intéresse ?",
-  });
-  const keywordsInput = el("textarea", {
-    rows: 4,
-    value: keywordsToText(script?.escalation_keywords),
-  });
+    return `Tu es ${assistantName || "l'assistante"}, l'assistante conversationnelle de {{institut}}.
 
-  const saveButton = asyncButton("Enregistrer", async () => {
+## PERSONNALITÉ ET TON
+${toneObj.promptPart}
+${specialInstructions ? `Consignes spécifiques de l'institut : ${specialInstructions}` : ""}
+
+## PRESTATIONS PROPOSÉES
+${servicesList || "- Soins et prestations personnalisés"}
+
+## MISSION
+1. Réponds chaleureusement aux clientes qui écrivent sur Instagram DM ou WhatsApp.
+2. Pose les questions de qualification nécessaires :
+${activeQuestions.map((q, i) => `   ${i + 1}. ${q.prompt}`).join("\n")}
+3. Propose 2 ou 3 créneaux libres disponibles dans l'agenda et confirme le rendez-vous.
+
+## RÈGLES DE SÉCURITÉ ABSOLUES
+- En cas de question médicale (grossesse, allaitement, pathologie, traitement médical lourd), transfère immédiatement à l'équipe sans donner de conseil médical.
+- Messages courts (1 à 3 phrases max) adaptés à la messagerie mobile.`;
+  }
+
+  function updatePromptPreview() {
+    previewBox.textContent = generateCompiledPrompt();
+  }
+  updatePromptPreview();
+
+  // Bouton Enregistrer & Générer
+  const saveBtn = asyncButton("✨ Générer & Enregistrer l'Agent IA", async () => {
     mount(feedback);
 
-    const questions = textToQuestions(questionsInput.value);
-    if (questions.length === 0) {
-      mount(feedback, errorBox("Le script doit contenir au moins une question."));
-      return;
-    }
+    const compiledPrompt = generateCompiledPrompt();
+    const activeQuestions = questions.filter((q) => q.enabled).map((q) => ({ field: q.field, prompt: q.prompt }));
 
-    const duplicates = duplicateFields(questions);
-    if (duplicates.length > 0) {
-      // Deux questions sur le même champ : la seconde réponse écraserait la
-      // première sans que le gérant comprenne pourquoi.
-      mount(feedback, errorBox(`Champ utilisé deux fois : ${duplicates.join(", ")}.`));
-      return;
+    const formattedServices = {};
+    for (const s of services) {
+      if (s.name.trim()) {
+        formattedServices[s.name.trim()] = { duration_min: s.duration, price: s.price };
+      }
     }
-
-    const businessHours = {};
-    for (const [key] of DAYS) businessHours[key] = textToIntervals(dayInputs.get(key).value);
 
     try {
       await saveAgent(agent.id, {
-        system_prompt_template: promptInput.value,
+        system_prompt_template: compiledPrompt,
         config: {
           ...config,
-          handoff_message: handoffInput.value.trim() || undefined,
-          whatsapp_confirmation_template: confirmTemplateInput.value.trim() || undefined,
-          whatsapp_reminder_template: reminderTemplateInput.value.trim() || undefined,
+          assistant_name: assistantName,
+          tone_id: selectedTone,
+          special_instructions: specialInstructions,
+          handoff_message: handoffMessage,
           scheduling: {
-            business_hours: businessHours,
-            services: textToServices(servicesInput.value),
-            default_duration_min: Number(defaultDurationInput.value) || 60,
-            slot_granularity_min: Number(granularityInput.value) || 30,
-            min_notice_hours: Number(noticeInput.value) || 0,
-            max_days_ahead: Number(horizonInput.value) || 14,
+            ...scheduling,
+            services: formattedServices,
           },
         },
       });
 
-      await saveScript(agent.id, script?.version ?? 0, {
-        questions,
-        budget_rules: script?.budget_rules ?? {},
-        escalation_keywords: textToKeywords(keywordsInput.value),
+      await saveScript(agent.id, loaded?.script?.version ?? 0, {
+        questions: activeQuestions,
+        budget_rules: loaded?.script?.budget_rules ?? {},
+        escalation_keywords: ["enceinte", "grossesse", "allergie", "traitement", "remboursement", "litige", "douleur", "brulure"],
       });
 
-      mount(feedback, successBox("Enregistré. La modification s'applique au prochain message."));
+      mount(feedback, successBox("🎉 Prompt généré et enregistré ! Votre agent DeepSeek utilisera ces nouvelles consignes dès le prochain message."));
     } catch (error) {
       mount(feedback, errorBox(error.message));
     }
-  }, { busyLabel: "Enregistrement…" });
+  }, { class: "btn btn--primary", busyLabel: "Génération en cours…" });
 
   return el("div", {}, [
-    el("h1", { class: "page-title", text: "Mon agent" }),
+    el("h1", { class: "page-title", text: "Personnaliser mon Agent IA" }),
+    el("p", { class: "muted", style: "margin-bottom: 2rem; margin-top: -.5rem;", text: "Renseignez vos informations ci-dessous. Setwise compile et génère automatiquement le meilleur prompt pour votre institut." }),
 
     card(
-      "Ton et consignes",
-      field(
-        "Consignes données à l'agent",
-        promptInput,
-        "Variables disponibles : {{institut}}, {{etablissement}}, {{prenom_lead}}.",
-      ),
-      field(
-        "Message de transfert à l'équipe",
-        handoffInput,
-        "Envoyé au client au moment où l'agent passe la main. Laisser vide pour le message par défaut.",
-      ),
+      "1. Identité & Personnalité de l'assistante",
+      field("Prénom de l'assistante virtuelle", nameInput, "Le prénom sous lequel l'IA se présente à vos clientes."),
+      el("div", { style: "margin-top: 1rem;" }, [
+        el("strong", { style: "display: block; font-size: .92rem; margin-bottom: .25rem;", text: "Ton de conversation :" }),
+        toneGrid,
+      ]),
+      field("Consignes particulières ou offres à mettre en avant", instructionsInput, "Ex: technologies utilisées, produits bio, offre découverte..."),
     ),
 
     card(
-      "Script de qualification",
-      field(
-        "Questions, une par ligne",
-        questionsInput,
-        "Format : nom_du_champ | question posée au client. L'ordre des lignes est l'ordre des questions.",
-      ),
-      field(
-        "Mots-clés de transfert immédiat",
-        keywordsInput,
-        "Séparés par des virgules. Détectés avant toute réponse automatique, sans tenir compte des accents.",
-      ),
-      el("p", {
-        class: "muted",
-        text: "Chaque enregistrement crée une nouvelle version du script. Les conversations " +
-          "en cours ne changent pas de règles en cours de route.",
-      }),
+      "2. Vos Prestations & Durées",
+      el("p", { class: "muted", style: "font-size: .88rem; margin-bottom: 1rem;", text: "L'IA utilise ces durées pour réserver les créneaux adéquats dans votre agenda." }),
+      servicesContainer,
+      addServiceBtn,
     ),
 
     card(
-      "Horaires d'ouverture",
-      el("p", { class: "muted", text: "Heure locale de l'établissement. Laisser vide pour un jour de fermeture." }),
-      ...hoursFields,
+      "3. Questions de Qualification posées aux clientes",
+      el("p", { class: "muted", style: "font-size: .88rem; margin-bottom: 1rem;", text: "Cochez les questions que l'IA doit poser avant de proposer un créneau de rendez-vous." }),
+      questionsContainer,
     ),
 
     card(
-      "Prestations et créneaux",
-      field(
-        "Prestations et durées, une par ligne",
-        servicesInput,
-        "Format : nom de la prestation : durée en minutes.",
-      ),
-      field("Durée par défaut (min)", defaultDurationInput, "Utilisée si la prestation n'est pas reconnue."),
-      field("Pas des créneaux (min)", granularityInput, "30 propose les créneaux à :00 et :30."),
-      field("Délai minimum avant RDV (h)", noticeInput, "Aucun créneau proposé en deçà."),
-      field("Horizon de réservation (jours)", horizonInput),
+      "4. Sécurité & Relais Humain",
+      field("Message envoyé quand l'agent passe la main à l'équipe", handoffInput, "Envoyé automatiquement en cas de question médicale ou réclamation."),
     ),
 
     card(
-      "Modèles WhatsApp",
-      el("p", {
-        class: "muted",
-        text: "Noms des modèles approuvés par Meta. Variables attendues : {{1}} prénom, " +
-          "{{2}} date et heure, {{3}} prestation.",
-      }),
-      field("Modèle de confirmation", confirmTemplateInput),
-      field("Modèle de rappel J-1", reminderTemplateInput),
+      "5. Prompt Système Généré Automatiquement",
+      el("p", { class: "muted", style: "font-size: .88rem; margin-bottom: .75rem;", text: "Ce prompt optimisé est injecté directement dans le modèle DeepSeek à chaque conversation." }),
+      previewBox,
     ),
 
-    el("div", { class: "sticky-actions" }, [saveButton, feedback]),
+    el("div", { class: "sticky-actions", style: "margin-top: 1.5rem;" }, [saveBtn, feedback]),
   ]);
 }
