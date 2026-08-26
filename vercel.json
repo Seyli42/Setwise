@@ -1,11 +1,6 @@
 {
-  "routes": [
-    { "src": "^/dashboard/?$", "dest": "/frontend/dashboard/index.html" },
-    { "src": "^/dashboard/(.*)$", "dest": "/frontend/dashboard/$1" },
-    { "src": "^/oauth/(.*)$", "dest": "/frontend/dashboard/oauth/$1" },
-    { "src": "^/confidentialite/?$", "dest": "/frontend/site/confidentialite.html" },
-    { "src": "^/cgv/?$", "dest": "/frontend/site/cgv.html" },
-    { "src": "^/mentions-legales/?$", "dest": "/frontend/site/mentions-legales.html" },
-    { "src": "^/(.*)$", "dest": "/frontend/site/$1" }
-  ]
+  "cleanUrls": true,
+  "trailingSlash": false,
+  "buildCommand": "mkdir -p public/dashboard && cp -r frontend/site/* public/ && cp -r frontend/dashboard/* public/dashboard/",
+  "outputDirectory": "public"
 }
