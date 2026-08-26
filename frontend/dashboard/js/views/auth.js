@@ -35,12 +35,29 @@ export function renderAuth(onSignedIn) {
     if (event === "SIGNED_IN") onSignedIn();
   });
 
+  const demoButton = el("button", {
+    class: "btn btn--ghost",
+    type: "button",
+    style: "margin-top: 1rem; width: 100%; border-color: var(--amber); color: var(--amber);",
+    text: "⚡ Découvrir le tableau de bord (Accès Démo 1-clic)",
+    on: {
+      click() {
+        auth.enableDemoMode();
+        onSignedIn();
+      },
+    },
+  });
+
   return el("div", { class: "centered" }, [
     card(
       "Setwise",
       el("p", { class: "muted", text: "Tableau de bord de votre institut." }),
       field("Adresse e-mail", email),
       submit,
+      el("div", { style: "text-align: center; margin-top: 1.25rem; border-top: 1px solid var(--edge); padding-top: 1.25rem;" }, [
+        el("p", { class: "muted", style: "font-size: 0.85rem;", text: "Vous souhaitez explorer l'application immédiatement ?" }),
+        demoButton,
+      ]),
       feedback,
     ),
   ]);

@@ -119,7 +119,11 @@ async function consumeMagicToken() {
   if (token) {
     try {
       mount(root, el("p", { class: "loading", text: "Connexion en cours…" }));
-      await auth.verifyToken(token, email ?? undefined);
+      if (token.startsWith("eyJ") && token.split(".").length === 3) {
+        localStorage.setItem("setwise_session_token", token);
+      } else {
+        await auth.verifyToken(token, email ?? undefined);
+      }
       // Nettoie l'URL
       history.replaceState(null, "", location.pathname + "#/overview");
       return true;
