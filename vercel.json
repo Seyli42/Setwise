@@ -1,0 +1,34 @@
+{
+  "cleanUrls": true,
+  "trailingSlash": false,
+  "rewrites": [
+    {
+      "source": "/dashboard",
+      "destination": "/frontend/dashboard/index.html"
+    },
+    {
+      "source": "/dashboard/:path*",
+      "destination": "/frontend/dashboard/:path*"
+    },
+    {
+      "source": "/oauth/:path*",
+      "destination": "/frontend/dashboard/oauth/:path*"
+    },
+    {
+      "source": "/confidentialite",
+      "destination": "/frontend/site/confidentialite.html"
+    },
+    {
+      "source": "/cgv",
+      "destination": "/frontend/site/cgv.html"
+    },
+    {
+      "source": "/mentions-legales",
+      "destination": "/frontend/site/mentions-legales.html"
+    },
+    {
+      "source": "/(.*)",
+      "destination": "/frontend/site/$1"
+    }
+  ]
+}
