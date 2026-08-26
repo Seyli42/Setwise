@@ -1,7 +1,7 @@
-// Configuration visuelle et interactive de l'agent IA (Générateur automatique de Prompt).
+// Configuration visuelle et interactive de l'agent IA (Générateur automatique de Prompt avec Garde-fous stricts).
 
 import { fetchAgent, saveAgent, saveScript } from "../api.js";
-import { asyncButton, badge, card, el, errorBox, field, mount, successBox } from "../dom.js";
+import { asyncButton, card, el, errorBox, field, mount, successBox } from "../dom.js";
 
 const TONES = [
   {
@@ -38,6 +38,18 @@ const DEFAULT_QUESTIONS = [
   { field: "contre_indications", prompt: "Avez-vous une contre-indication particulière (grossesse, traitement en cours) ?", enabled: true },
 ];
 
+const DEFAULT_GUARDRAILS = [
+  { id: "no_medical", text: "🏥 Ne JAMAIS donner d'avis ou diagnostic médical (grossesse, ordonnance, peau)", enabled: true },
+  { id: "no_bank", text: "💳 Ne JAMAIS demander de numéro de carte bancaire, IBAN ou mot de passe", enabled: true },
+  { id: "no_fake_slots", text: "📅 Ne JAMAIS inventer de créneau : vérifier l'agenda en direct avant de proposer", enabled: true },
+  { id: "no_negotiation", text: "🏷️ Ne JAMAIS négocier les tarifs ou inventer des remises non autorisées", enabled: true },
+  { id: "no_spam", text: "🚫 Ne JAMAIS insister : si la cliente ne souhaite pas réserver, remercier et s'arrêter", enabled: true },
+  { id: "short_messages", text: "📱 Messages courts (1 à 3 phrases max) : interdiction d'envoyer des longs pavés", enabled: true },
+  { id: "one_question", text: "❓ Une seule question par message pour ne pas submerger la cliente", enabled: true },
+  { id: "escalate_dispute", text: "🛑 En cas de litige, mécontentement ou réclamation : passer la main immédiatement à l'équipe", enabled: true },
+  { id: "honest_identity", text: "🤖 Transparence : si on lui demande directement si elle est une IA, répondre honnêtement", enabled: true },
+];
+
 export async function renderAgent() {
   const loaded = await fetchAgent();
 
@@ -50,11 +62,13 @@ export async function renderAgent() {
   let selectedTone = config.tone_id ?? "chaleureux";
   let assistantName = config.assistant_name ?? "Clara";
   let specialInstructions = config.special_instructions ?? "Mentionner que nous utilisons des cires bio et des lasers de dernière génération.";
-  let handoffMessage = config.handoff_message ?? "Je transmets votre demande à notre équipe qui revient vers vous très vite !";
+  let handoffMessage = config.handoff_message ?? "Je transmets immédiatement votre demande à notre équipe qui revient vers vous dans les plus brefs délais !";
 
   let questions = (loaded?.script?.questions?.length > 0)
     ? loaded.script.questions.map((q) => ({ field: q.field, prompt: q.prompt, enabled: true }))
     : [...DEFAULT_QUESTIONS];
+
+  let guardrails = [...DEFAULT_GUARDRAILS];
 
   let services = (scheduling.services && Object.keys(scheduling.services).length > 0)
     ? Object.entries(scheduling.services).map(([name, s]) => ({ name, duration: (typeof s === "number" ? s : s?.duration_min) || 45, price: (typeof s === "object" ? s?.price : 0) || 60 }))
@@ -164,7 +178,7 @@ export async function renderAgent() {
   function renderQuestionsList() {
     mount(
       questionsContainer,
-      questions.map((q, idx) => {
+      questions.map((q) => {
         const check = el("input", {
           type: "checkbox",
           on: {
@@ -193,16 +207,43 @@ export async function renderAgent() {
   }
   renderQuestionsList();
 
-  // 4. Carte Relais Humain & Sécurité Médicale
+  // 4. Carte Garde-fous et Interdictions
+  const guardrailsContainer = el("div", { style: "display: flex; flex-direction: column; gap: .6rem;" });
+
+  function renderGuardrailsList() {
+    mount(
+      guardrailsContainer,
+      guardrails.map((g) => {
+        const check = el("input", {
+          type: "checkbox",
+          on: {
+            change: (e) => {
+              g.enabled = e.target.checked;
+              updatePromptPreview();
+            },
+          },
+        });
+        if (g.enabled) check.checked = true;
+
+        return el("label", { style: "display: flex; gap: .65rem; align-items: center; cursor: pointer; font-size: .9rem;" }, [
+          check,
+          el("span", { text: g.text }),
+        ]);
+      }),
+    );
+  }
+  renderGuardrailsList();
+
+  // 5. Carte Relais Humain & Sécurité Médicale
   const handoffInput = el("input", {
     type: "text",
     value: handoffMessage,
     on: { input: (e) => { handoffMessage = e.target.value; } },
   });
 
-  // 5. Générateur & Visualiseur de Prompt
+  // 6. Générateur & Visualiseur de Prompt
   const previewBox = el("pre", {
-    style: "background: #0f172a; color: #f8fafc; padding: 1.25rem; border-radius: 8px; font-size: .82rem; line-height: 1.5; max-height: 220px; overflow-y: auto; white-space: pre-wrap; font-family: monospace;",
+    style: "background: #0f172a; color: #f8fafc; padding: 1.25rem; border-radius: 8px; font-size: .82rem; line-height: 1.5; max-height: 250px; overflow-y: auto; white-space: pre-wrap; font-family: monospace;",
   });
 
   function generateCompiledPrompt() {
@@ -221,13 +262,20 @@ ${servicesList || "- Soins et prestations personnalisés"}
 
 ## MISSION
 1. Réponds chaleureusement aux clientes qui écrivent sur Instagram DM ou WhatsApp.
-2. Pose les questions de qualification nécessaires :
+2. Pose les questions de qualification nécessaires (une seule question à la fois) :
 ${activeQuestions.map((q, i) => `   ${i + 1}. ${q.prompt}`).join("\n")}
-3. Propose 2 ou 3 créneaux libres disponibles dans l'agenda et confirme le rendez-vous.
+3. Consulte les créneaux réellement disponibles dans l'agenda et confirme le rendez-vous.
 
-## RÈGLES DE SÉCURITÉ ABSOLUES
-- En cas de question médicale (grossesse, allaitement, pathologie, traitement médical lourd), transfère immédiatement à l'équipe sans donner de conseil médical.
-- Messages courts (1 à 3 phrases max) adaptés à la messagerie mobile.`;
+## CE QUE TU NE DOIS JAMAIS FAIRE (INTERDICTIONS STRICTES)
+- INTERDICTION MÉDICALE : Tu n'es pas médecin ni dermatologue. Ne donne AUCUN diagnostic, aucun avis médical et ne promets aucun résultat miracle. En cas de grossesse, allaitement, pathologie de peau ou traitement médical lourd (ex: Roaccutane), passe immédiatement la main à l'équipe via escalate_to_human.
+- INTERDICTION BANCAIRE : Ne demande JAMAIS de coordonnées bancaires, numéro de carte, mot de passe ou virement dans le chat.
+- CRÉNEAUX RÉELS UNIQUEMENT : N'invente JAMAIS d'horaire ou de créneau non validé par l'outil de calendrier.
+- PRIX FERMES : Ne négocie jamais les tarifs et n'accorde aucune réduction non stipulée par l'établissement.
+- SANS INSISTANCE : Si la personne refuse, décline ou ne répond plus, ne la relance pas agressivement. Remercie-la poliment et arrête-toi.
+- MESSAGES COURTS : Écris toujours des messages très courts (1 à 3 phrases max). Interdiction formelle d'envoyer de longs pavés sur mobile.
+- UNE SEULE QUESTION : Ne pose jamais 2 ou 3 questions dans le même message. Toujours une seule question à la fois.
+- GESTION DES LITIGES : En cas de réclamation, mécontentement ou litige, reste courtoise, présente tes excuses au nom de l'institut et alerte immédiatement l'équipe sans entrer dans le conflit.
+- TRANSPARENCE : Si la personne demande explicitement si tu es une IA ou un robot, réponds honnêtement que tu es l'assistante automatisée de l'établissement.`;
   }
 
   function updatePromptPreview() {
@@ -268,10 +316,10 @@ ${activeQuestions.map((q, i) => `   ${i + 1}. ${q.prompt}`).join("\n")}
       await saveScript(agent.id, loaded?.script?.version ?? 0, {
         questions: activeQuestions,
         budget_rules: loaded?.script?.budget_rules ?? {},
-        escalation_keywords: ["enceinte", "grossesse", "allergie", "traitement", "remboursement", "litige", "douleur", "brulure"],
+        escalation_keywords: ["enceinte", "grossesse", "allergie", "traitement", "remboursement", "litige", "douleur", "brulure", "roaccutane", "reclamation"],
       });
 
-      mount(feedback, successBox("🎉 Prompt généré et enregistré ! Votre agent DeepSeek utilisera ces nouvelles consignes dès le prochain message."));
+      mount(feedback, successBox("🎉 Prompt généré et enregistré ! Votre agent DeepSeek respectera scrupuleusement ces consignes et interdictions dès le prochain message."));
     } catch (error) {
       mount(feedback, errorBox(error.message));
     }
@@ -279,7 +327,7 @@ ${activeQuestions.map((q, i) => `   ${i + 1}. ${q.prompt}`).join("\n")}
 
   return el("div", {}, [
     el("h1", { class: "page-title", text: "Personnaliser mon Agent IA" }),
-    el("p", { class: "muted", style: "margin-bottom: 2rem; margin-top: -.5rem;", text: "Renseignez vos informations ci-dessous. Setwise compile et génère automatiquement le meilleur prompt pour votre institut." }),
+    el("p", { class: "muted", style: "margin-bottom: 2rem; margin-top: -.5rem;", text: "Renseignez vos informations ci-dessous. Setwise compile et génère automatiquement le meilleur prompt avec tous les garde-fous pour votre institut." }),
 
     card(
       "1. Identité & Personnalité de l'assistante",
@@ -305,13 +353,19 @@ ${activeQuestions.map((q, i) => `   ${i + 1}. ${q.prompt}`).join("\n")}
     ),
 
     card(
-      "4. Sécurité & Relais Humain",
+      "4. 🛡️ Ce que l'agent ne doit JAMAIS faire (Garde-fous automatiques)",
+      el("p", { class: "muted", style: "font-size: .88rem; margin-bottom: 1rem;", text: "Ces règles strictes sont intégrées automatiquement dans le prompt de l'IA pour protéger votre institut." }),
+      guardrailsContainer,
+    ),
+
+    card(
+      "5. Sécurité & Relais Humain",
       field("Message envoyé quand l'agent passe la main à l'équipe", handoffInput, "Envoyé automatiquement en cas de question médicale ou réclamation."),
     ),
 
     card(
-      "5. Prompt Système Généré Automatiquement",
-      el("p", { class: "muted", style: "font-size: .88rem; margin-bottom: .75rem;", text: "Ce prompt optimisé est injecté directement dans le modèle DeepSeek à chaque conversation." }),
+      "6. Prompt Système Généré Automatiquement",
+      el("p", { class: "muted", style: "font-size: .88rem; margin-bottom: .75rem;", text: "Ce prompt complet incluant la mission et toutes les interdictions est injecté directement dans DeepSeek." }),
       previewBox,
     ),
 
