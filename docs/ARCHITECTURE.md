@@ -40,7 +40,7 @@ Setwise a été conçu pour allier **haute fiabilité**, **faible latence** et *
 |---|---|---|
 | **Base Postgres managée** | **Neon Serverless Postgres** via `DATABASE_URL` (SSL + connection pooling) | Serverless, scaling instantané, branching de bases de données de dev/staging. |
 | **Supabase Auth** (`auth.users`, OTP) | **Module d'authentification autonome** (`src/auth.ts`, tables `users` & `auth_tokens`, Resend + JWT session) | Indépendance totale vis-à-vis des vendors tiers, contrôle complet des durées de sessions et tokens. |
-| **PostgREST** | **API REST structurée et sécurisée** (`src/routes/dashboard.ts`) | Validation stricte des données entrantes, requêtes SQL optimisées, élimination des failles potentielles de RLS client. |
+| **PostgREST** | **API REST structurée et sécurisée** (`src/routes/dashboard.ts`) | Validation stricte des données entrantes, requêtes SQL optimisées. La RLS revient ensuite (§4) — pas comme surface client PostgREST, mais comme second verrou côté serveur derrière l'API. |
 | **Edge Functions & pg_cron** | **Serveur Deno unifié** (`src/server.ts`) + Endpoints Crons (`src/routes/crons.ts`) + Worker intégré | Déploiement unique (Deno Deploy, Docker, Fly.io, Railway), exécution locale sans émulateur lourd. |
 
 ---
@@ -61,7 +61,8 @@ Meta impose un accusé de réception rapide (< 20 secondes) sous peine de retent
 - **Résolution serveur inviolable** : Le `tenant_id` n'est JAMAIS extrait d'un payload client non signé.
   - Pour les messages entrants, il est déduit de `external_account_id` via `channel_connections`.
   - Pour les requêtes du dashboard, il est extrait du JWT vérifié cryptographiquement par `src/auth.ts`.
-- **Chiffrement au repos** : Tous les tokens d'accès (Meta tokens, Google refresh tokens) sont chiffrés en base avec AES-GCM 256 bits (`src/_shared/crypto.ts`) avant insertion.
+- **Double verrou depuis `migrations/0006`/`0007`** : le filtre applicatif ci-dessus n'est plus le seul rempart. Le tableau de bord se connecte sous un rôle Postgres dédié (`setwise_app`), soumis à la Row-Level Security — chaque requête tourne dans une transaction (`withTenant`, `src/db.ts`) qui pose `app.tenant_id`, et les policies (`FORCE ROW LEVEL SECURITY`) refusent toute ligne d'un autre institut, y compris à l'écriture (`WITH CHECK`). Les tâches de fond (webhooks, crons, moteur d'agent) utilisent un second rôle (`setwise_worker`, `BYPASSRLS`) puisqu'elles traitent plusieurs instituts par construction. C'est le correctif direct d'une faille trouvée en revue : une route qui filtrait par rôle mais pas par propriétaire de la ressource visée.
+- **Chiffrement au repos** : Tous les tokens d'accès (Meta tokens, Google refresh tokens) sont chiffrés en base avec AES-GCM 256 bits (`src/_shared/crypto.ts`) avant insertion. Les colonnes correspondantes (`access_token_encrypted`, `credentials_encrypted`) sont en plus retirées en lecture au rôle applicatif : même un `select *` accidentel ne peut pas les faire remonter au navigateur.
 
 ---
 

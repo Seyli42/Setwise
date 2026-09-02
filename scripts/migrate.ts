@@ -2,6 +2,16 @@
 //
 // Usage :
 //   deno run --allow-net --allow-env --allow-read scripts/migrate.ts
+//
+// Toutes les migrations en attente sont appliquées en une seule fois, dans
+// l'ordre du nom de fichier. Pour s'arrêter à une migration précise — utile
+// pour la bascule des rôles RLS (voir docs/DEPLOYMENT.md §3.2), où des
+// étapes manuelles doivent avoir lieu entre deux migrations — fixer
+// `MIGRATE_UNTIL` au nom exact du dernier fichier à appliquer :
+//
+//   MIGRATE_UNTIL=0006_rls_roles.sql deno run --env --allow-net --allow-env --allow-read scripts/migrate.ts
+//   # ... étapes manuelles (mots de passe, variables d'environnement, déploiement) ...
+//   deno run --env --allow-net --allow-env --allow-read scripts/migrate.ts   # reprend à partir de 0007
 
 import postgres from "npm:postgres@^3.4.5";
 
@@ -20,9 +30,16 @@ try {
   // Ignorer si inaccessible
 }
 
-const databaseUrl = Deno.env.get("DATABASE_URL");
+const migrateUntil = Deno.env.get("MIGRATE_UNTIL")?.trim() || null;
+
+// Les migrations font du DDL (create table, alter role, create policy) : elles
+// exigent le propriétaire du schéma, pas le rôle applicatif. Depuis 0006/0007,
+// `DATABASE_URL` porte `setwise_app`, volontairement dépourvu de ces droits —
+// l'y envoyer donnerait « permission denied for schema public ». D'où une
+// variable dédiée, utilisée par ce seul script et jamais par le serveur.
+const databaseUrl = Deno.env.get("DATABASE_URL_ADMIN") ?? Deno.env.get("DATABASE_URL");
 if (!databaseUrl) {
-  console.error("❌ Variable DATABASE_URL manquante. Définissez DATABASE_URL=postgresql://...");
+  console.error("❌ Variable DATABASE_URL_ADMIN manquante (connexion propriétaire du schéma, ex. neondb_owner).");
   Deno.exit(1);
 }
 
@@ -62,6 +79,16 @@ async function runMigrations() {
     for (const filename of entries) {
       if (applied.has(filename)) {
         console.log(`⏩ Migration déjà appliquée : ${filename}`);
+        // BUG CORRIGÉ : ce `continue` sautait par-dessus la vérification
+        // MIGRATE_UNTIL plus bas, qui n'existait que sur le chemin
+        // "fraîchement appliquée". Une migration DÉJÀ appliquée qui se trouve
+        // être la borne demandée doit arrêter l'exécution tout autant qu'une
+        // migration qu'on vient d'appliquer — sinon un second run avec le
+        // même MIGRATE_UNTIL continue tout droit au-delà, silencieusement.
+        if (filename === migrateUntil) {
+          console.log(`⏸️  Arrêt demandé après ${filename} (MIGRATE_UNTIL, déjà appliquée).`);
+          break;
+        }
         continue;
       }
 
@@ -76,6 +103,11 @@ async function runMigrations() {
 
       console.log(`✅ Migration appliquée avec succès : ${filename}`);
       count++;
+
+      if (filename === migrateUntil) {
+        console.log(`⏸️  Arrêt demandé après ${filename} (MIGRATE_UNTIL).`);
+        break;
+      }
     }
 
     if (count === 0) {

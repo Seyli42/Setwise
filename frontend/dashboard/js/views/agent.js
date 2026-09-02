@@ -64,13 +64,13 @@ export async function renderAgent() {
   let specialInstructions = config.special_instructions ?? "Mentionner que nous utilisons des cires bio et des lasers de dernière génération.";
   let handoffMessage = config.handoff_message ?? "Je transmets immédiatement votre demande à notre équipe qui revient vers vous dans les plus brefs délais !";
 
-  let questions = (loaded?.script?.questions?.length > 0)
+  const questions = (loaded?.script?.questions?.length > 0)
     ? loaded.script.questions.map((q) => ({ field: q.field, prompt: q.prompt, enabled: true }))
     : [...DEFAULT_QUESTIONS];
 
-  let guardrails = [...DEFAULT_GUARDRAILS];
+  const guardrails = [...DEFAULT_GUARDRAILS];
 
-  let services = (scheduling.services && Object.keys(scheduling.services).length > 0)
+  const services = (scheduling.services && Object.keys(scheduling.services).length > 0)
     ? Object.entries(scheduling.services).map(([name, s]) => ({ name, duration: (typeof s === "number" ? s : s?.duration_min) || 45, price: (typeof s === "object" ? s?.price : 0) || 60 }))
     : [
       { name: "Épilation laser demi-jambes", duration: 30, price: 90 },

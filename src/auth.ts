@@ -5,7 +5,7 @@
 // 2. Vérification : validation du token, invalidation à usage unique, émission d'un JWT de session.
 // 3. Authentification des requêtes API : vérification du JWT et résolution du tenant_id.
 
-import { sql } from "./db.ts";
+import { sqlWorker as sql } from "./db.ts"; // rôle système : BYPASSRLS, hors RLS
 import { optionalEnv } from "./_shared/env.ts";
 import { AppError, ValidationError } from "./_shared/errors.ts";
 import { log } from "./_shared/logger.ts";
@@ -29,6 +29,49 @@ export interface DashboardCaller {
 
 const RESEND_ENDPOINT = "https://api.resend.com/emails";
 
+/**
+ * Origines autorisées pour les liens de connexion, dans l'ordre de
+ * préférence. `APP_ORIGINS` accepte une liste séparée par des virgules ; à
+ * défaut on retombe sur `DASHBOARD_ORIGIN`, qui existe déjà pour le CORS.
+ */
+export function allowedOrigins(): string[] {
+  const configured = optionalEnv("APP_ORIGINS", "");
+  const liste = configured
+    ? configured.split(",").map((o) => o.trim()).filter(Boolean)
+    : [optionalEnv("DASHBOARD_ORIGIN", "http://localhost:8000")];
+
+  return liste.map((o) => o.replace(/\/+$/, ""));
+}
+
+/**
+ * Choisit l'origine du lien de connexion.
+ *
+ * FAILLE CORRIGÉE : cette fonction reconstruisait le lien à partir de
+ * `req.headers.get("origin")` / `referer`, deux en-têtes entièrement
+ * contrôlés par l'appelant. Un attaquant demandait un lien magique pour
+ * l'adresse d'une victime avec `Origin: https://evil.example`, et Setwise lui
+ * envoyait, depuis son propre domaine vérifié (SPF/DKIM en ordre), un e-mail
+ * légitime dont le lien menait chez l'attaquant avec le jeton de session dans
+ * le fragment. Un clic suffisait à voler la session.
+ *
+ * L'origine demandée n'est donc plus jamais utilisée directement : elle n'est
+ * retenue que si elle figure dans l'allowlist de configuration, sinon
+ * l'origine canonique (premier élément) est utilisée silencieusement — un
+ * refus explicite renseignerait l'attaquant sur ce qui a été détecté.
+ */
+export function resolveOrigin(requested: string | null): string {
+  const origines = allowedOrigins();
+  const canonique = origines[0];
+
+  if (!requested) return canonique;
+
+  const nettoyee = requested.replace(/\/+$/, "");
+  if (origines.includes(nettoyee)) return nettoyee;
+
+  log.warn("auth.origin_rejected", { requested: nettoyee, canonical: canonique });
+  return canonique;
+}
+
 function getJwtSecret(): Uint8Array {
   const secret = optionalEnv("JWT_SECRET", "") || optionalEnv("ENCRYPTION_KEY", "setwise_default_secret_key_32bytes_!");
   return new TextEncoder().encode(secret);
@@ -50,7 +93,12 @@ export interface SendMagicLinkResult {
 /**
  * Génère et envoie un lien magique de connexion par email.
  */
-export async function sendMagicLink(email: string, origin: string): Promise<SendMagicLinkResult> {
+export async function sendMagicLink(
+  email: string,
+  requestedOrigin: string | null,
+): Promise<SendMagicLinkResult> {
+  const origin = resolveOrigin(requestedOrigin);
+
   const normalizedEmail = email.toLowerCase().trim();
   if (!normalizedEmail || !normalizedEmail.includes("@")) {
     throw new ValidationError("Adresse e-mail invalide.");

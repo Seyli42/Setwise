@@ -4,7 +4,7 @@
 // webhook (qu'un tiers pourrait forger) — il est lu en base à partir de
 // l'identifiant de compte Meta, lui-même authentifié par la signature du webhook.
 
-import { sql } from "../../db.ts";
+import { sqlWorker as sql } from "../../db.ts"; // rôle système : BYPASSRLS, hors RLS
 import { decryptSecret } from "../crypto.ts";
 import { DatabaseError, ValidationError } from "../errors.ts";
 import type { Channel } from "../types.ts";

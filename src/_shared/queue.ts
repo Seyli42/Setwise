@@ -8,7 +8,7 @@
 // L'unité de queue est le MESSAGE, pas la livraison HTTP : `external_event_id`
 // porte l'identifiant du message Meta, donc un rejeu du même lot n'insère rien.
 
-import { sql } from "../db.ts";
+import { sqlWorker as sql } from "../db.ts"; // rôle système : BYPASSRLS, hors RLS
 import { DatabaseError } from "./errors.ts";
 import type { ParsedInbound, RawInboundEvent } from "./channels/types.ts";
 

@@ -21,9 +21,9 @@ try {
   // Ignorer
 }
 
-const databaseUrl = Deno.env.get("DATABASE_URL");
+const databaseUrl = Deno.env.get("DATABASE_URL_WORKER");
 if (!databaseUrl) {
-  console.error("❌ Variable DATABASE_URL manquante.");
+  console.error("❌ Variable DATABASE_URL_WORKER manquante (rôle setwise_worker, requis sous RLS forcée).");
   Deno.exit(1);
 }
 

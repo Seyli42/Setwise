@@ -5,7 +5,7 @@
 // sont pas exposés du tout. Un modèle qui ne voit pas l'outil ne peut pas
 // promettre un créneau qu'on serait incapable d'honorer.
 
-import { sql } from "../../db.ts";
+import { sqlWorker as sql } from "../../db.ts"; // rôle système : BYPASSRLS, hors RLS
 import { getCalendarProvider } from "../calendar.ts";
 import { spreadSlots } from "../calendar/slots.ts";
 import { formatFrench } from "../calendar/timezone.ts";

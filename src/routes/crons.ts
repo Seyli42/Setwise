@@ -7,18 +7,53 @@ import { sendDueReminders } from "../_shared/reminders.ts";
 import { runOutboundCampaigns } from "../_shared/outbound.ts";
 import { refreshExpiringTokens } from "../_shared/metaTokens.ts";
 import { deliverPendingNotifications } from "../_shared/notifications.ts";
-import { sql } from "../db.ts";
+import { sqlWorker as sql } from "../db.ts"; // rôle système : BYPASSRLS, hors RLS
 
+/**
+ * Comparaison à temps constant : un `===` sur une chaîne sort au premier
+ * caractère différent, ce qui laisse deviner le secret octet par octet.
+ */
+function secretsEqual(a: string, b: string): boolean {
+  if (a.length !== b.length) return false;
+  let diff = 0;
+  for (let i = 0; i < a.length; i++) diff |= a.charCodeAt(i) ^ b.charCodeAt(i);
+  return diff === 0;
+}
+
+/**
+ * FAILLE CORRIGÉE : cette fonction renvoyait `true` quand `CRON_SECRET` était
+ * absent. Un secret oublié en production ouvrait donc TOUTES les tâches au
+ * public — dont `/crons/purge`, qui supprime définitivement jusqu'à dix
+ * instituts par appel.
+ *
+ * Un contrôle d'authentification doit échouer fermé. Le confort de
+ * développement est explicite et local : `ALLOW_UNAUTHENTICATED_CRONS=1`, une
+ * variable qu'on ne pose pas par accident sur un serveur.
+ */
 function verifyCronSecret(req: Request): boolean {
   const secret = optionalEnv("CRON_SECRET", "");
-  if (!secret) return true; // En local / dev, ouvert si non configuré
+
+  if (!secret) {
+    if (optionalEnv("ALLOW_UNAUTHENTICATED_CRONS", "") === "1") {
+      log.warn("cron.unauthenticated_allowed", {});
+      return true;
+    }
+    log.error("cron.secret_missing", {});
+    return false;
+  }
 
   const authHeader = req.headers.get("authorization") ?? "";
   const token = authHeader.toLowerCase().startsWith("bearer ") ? authHeader.slice(7).trim() : "";
   const customHeader = req.headers.get("x-cron-secret") ?? "";
 
-  return token === secret || customHeader === secret;
+  return secretsEqual(token, secret) || secretsEqual(customHeader, secret);
 }
+
+/**
+ * Tâches destructrices : POST obligatoire. En GET, un préchargement de lien,
+ * un antivirus de messagerie ou un crawler suffirait à déclencher une purge.
+ */
+const POST_ONLY = new Set(["/crons/purge"]);
 
 export async function handleCrons(req: Request, url: URL): Promise<Response> {
   if (req.method !== "POST" && req.method !== "GET") {
@@ -31,6 +66,10 @@ export async function handleCrons(req: Request, url: URL): Promise<Response> {
   }
 
   const path = url.pathname;
+
+  if (POST_ONLY.has(path) && req.method !== "POST") {
+    return new Response("Method Not Allowed", { status: 405 });
+  }
 
   try {
     switch (path) {
@@ -60,15 +99,19 @@ export async function handleCrons(req: Request, url: URL): Promise<Response> {
       }
 
       case "/crons/purge": {
-        const [purgedData, purgedTenants] = await Promise.all([
+        const [purgedData, purgedTenants, purgedRateLimits] = await Promise.all([
           sql`select anonymized_leads, anonymized_messages from purge_expired_personal_data(500);`,
           sql`select tenant_id, tenant_name, action from purge_terminated_tenants(30, 10, false);`,
+          // Rattachée ici plutôt qu'à une tâche dédiée : pas de nouveau secret
+          // à distribuer, pas de nouvelle planification à poser.
+          sql<{ purge_expired_rate_limits: number }[]>`select purge_expired_rate_limits();`,
         ]);
         return Response.json({
           ok: true,
           task: "purge",
           purged_personal_data: purgedData[0] ?? null,
           purged_tenants: purgedTenants,
+          purged_rate_limits: purgedRateLimits[0]?.purge_expired_rate_limits ?? 0,
         });
       }
 

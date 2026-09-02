@@ -4,7 +4,7 @@
 // filtrée sur le tenant_id résolu depuis `channel_connections`, jamais depuis
 // un input externe non authentifié.
 
-import { sql } from "../../db.ts";
+import { sqlWorker as sql } from "../../db.ts"; // rôle système : BYPASSRLS, hors RLS
 import { DatabaseError, ValidationError } from "../errors.ts";
 import { log } from "../logger.ts";
 import { deliverPendingNotifications, queueEscalationAlert } from "../notifications.ts";

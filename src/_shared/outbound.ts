@@ -10,7 +10,7 @@
 // 3. Un abonnement suspendu ne doit rien envoyer : facturer l'institut zéro
 //    euro et lui consommer sa réputation WhatsApp serait le pire des deux.
 
-import { sql } from "../db.ts";
+import { sqlWorker as sql } from "../db.ts"; // rôle système : BYPASSRLS, hors RLS
 import { DatabaseError } from "./errors.ts";
 import { log, scopedLogger } from "./logger.ts";
 import { getBillingState } from "./billing.ts";

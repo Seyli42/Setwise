@@ -41,6 +41,22 @@ export function compose(subject: AlertSubject): { subject: string; body: string 
     };
   }
 
+  if (subject.kind === "llm_quota_warning") {
+    const used = typeof subject.payload.used === "number" ? subject.payload.used : null;
+    const limite = typeof subject.payload.limit === "number" ? subject.payload.limit : null;
+    const detail = used !== null && limite !== null ? ` (${used} / ${limite} ce mois-ci)` : "";
+
+    return {
+      subject: "Setwise — vous approchez du quota IA de votre formule",
+      body: `Votre institut approche du quota de conversations IA inclus dans sa formule${detail}.\n\n` +
+        "Rien ne change pour l'instant : votre agent continue de répondre normalement. " +
+        "Une fois le quota atteint, il transfère les nouvelles conversations à votre équipe " +
+        "au lieu de répondre — le temps que vous passiez à une formule supérieure ou " +
+        "que le mois suivant démarre.\n\n" +
+        "Ouvrez le tableau de bord, onglet Abonnement, pour changer de formule.",
+    };
+  }
+
   if (subject.kind === "escalation_stale") {
     return {
       subject: "Setwise — une conversation attend toujours",
@@ -64,6 +80,15 @@ export function compose(subject: AlertSubject): { subject: string; body: string 
 
 /** Variables positionnelles du modèle WhatsApp d'alerte : {{1}} état, {{2}} motif. */
 export function templateParameters(subject: AlertSubject): string[] {
+  if (subject.kind === "llm_quota_warning") {
+    const used = typeof subject.payload.used === "number" ? subject.payload.used : null;
+    const limite = typeof subject.payload.limit === "number" ? subject.payload.limit : null;
+    return [
+      "quota IA",
+      used !== null && limite !== null ? `${used} / ${limite} ce mois-ci` : "seuil atteint",
+    ];
+  }
+
   return [
     subject.kind === "escalation_stale" ? "toujours en attente" : "à reprendre",
     readReason(subject.payload).slice(0, 200),

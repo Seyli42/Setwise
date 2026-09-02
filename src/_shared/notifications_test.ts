@@ -6,7 +6,7 @@
 // le motif d'escalade, jamais l'identité de la cliente ni le contenu de ses
 // messages.
 //
-// Lancer : deno test supabase/functions/_shared/notifications_test.ts
+// Lancer : deno test --allow-env src/_shared/notifications_test.ts
 
 import { assert, assertEquals, assertStringIncludes } from "jsr:@std/assert@1";
 import { compose, templateParameters } from "./notificationMessage.ts";
@@ -117,4 +117,42 @@ Deno.test("invitation : le corps ne ressemble pas à une alerte d'escalade", () 
 
   assert(invite.subject !== escalation.subject);
   assert(!invite.body.includes("Conversations"));
+});
+
+// ============================================================
+// Avertissement de quota IA
+// ============================================================
+
+Deno.test("quota : annonce le seuil sans alarmer, chiffres inclus", () => {
+  const { subject, body } = compose({
+    kind: "llm_quota_warning",
+    payload: { used: 800, limit: 1000 },
+  });
+
+  assertStringIncludes(subject, "quota IA");
+  assertStringIncludes(body, "800 / 1000");
+  // L'agent continue de répondre au moment de l'avertissement : le dire
+  // évite qu'un gérant panique et pense le service déjà coupé.
+  assertStringIncludes(body, "continue de répondre");
+});
+
+Deno.test("quota : sans chiffres exploitables, le message reste lisible", () => {
+  const { body } = compose({ kind: "llm_quota_warning", payload: {} });
+  assert(!body.includes("undefined"));
+  assert(!body.includes("null"));
+});
+
+Deno.test("quota : distinct d'une escalade dans le contenu et le modèle WhatsApp", () => {
+  // Les deux natures passent par la même file de notifications ; les
+  // confondre ferait croire à une conversation en attente de réponse humaine
+  // alors qu'aucune cliente n'est concernée par cette alerte.
+  const quota = compose({ kind: "llm_quota_warning", payload: { used: 5, limit: 10 } });
+  const escalation = compose({ kind: "escalation_opened", payload: { reason: "x" } });
+
+  assert(quota.subject !== escalation.subject);
+  assert(!quota.body.includes("Conversations"));
+
+  const params = templateParameters({ kind: "llm_quota_warning", payload: { used: 5, limit: 10 } });
+  assertEquals(params[0], "quota IA");
+  assertEquals(params[1], "5 / 10 ce mois-ci");
 });

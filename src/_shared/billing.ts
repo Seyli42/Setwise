@@ -5,7 +5,7 @@
 // ici : une seconde implémentation finirait par diverger, et la divergence se
 // paierait soit en service rendu gratuitement, soit en institut coupé à tort.
 
-import { sql } from "../db.ts";
+import { sqlWorker as sql } from "../db.ts"; // rôle système : BYPASSRLS, hors RLS
 import { DatabaseError } from "./errors.ts";
 import { log } from "./logger.ts";
 import { stripe, stripeError, type Stripe } from "./stripe.ts";

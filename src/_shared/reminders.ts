@@ -4,7 +4,7 @@
 // réduit nettement. Passe obligatoirement par un modèle WhatsApp approuvé — la
 // fenêtre de 24 h est fermée depuis longtemps au moment du rappel.
 
-import { sql } from "../db.ts";
+import { sqlWorker as sql } from "../db.ts"; // rôle système : BYPASSRLS, hors RLS
 import { DatabaseError } from "./errors.ts";
 import { log, scopedLogger } from "./logger.ts";
 import { resolveAgentContext } from "./agent/memory.ts";

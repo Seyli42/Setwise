@@ -13,7 +13,8 @@ import "./_shared/bootstrap.ts";
 import { optionalEnv, optionalIntEnv } from "./_shared/env.ts";
 import { log } from "./_shared/logger.ts";
 import { AppError, ValidationError } from "./_shared/errors.ts";
-import { AuthError } from "./auth.ts";
+import { RateLimitError } from "./_shared/rateLimit.ts";
+import { allowedOrigins, AuthError } from "./auth.ts";
 import { handleInstagramWebhook, handleStripeWebhook, handleWhatsAppWebhook } from "./routes/webhooks.ts";
 import { handleGetMe, handleSendMagicLink, handleVerifyMagicLink } from "./routes/auth.ts";
 import { handleDashboardApi } from "./routes/dashboard.ts";
@@ -24,15 +25,36 @@ import { serveStaticFile } from "./static.ts";
 
 const PORT = optionalIntEnv("PORT", 8000);
 
-const CORS_HEADERS: Record<string, string> = {
-  "access-control-allow-origin": optionalEnv("DASHBOARD_ORIGIN", "*"),
+const CORS_BASE: Record<string, string> = {
   "access-control-allow-headers": "authorization, content-type, x-cron-secret",
   "access-control-allow-methods": "GET, POST, PATCH, DELETE, OPTIONS",
+  // L'origine autorisée varie selon l'appelant : sans ce `vary`, un cache
+  // partagé resservirait à un domaine l'en-tête calculé pour un autre.
+  "vary": "origin",
 };
 
-function addCors(res: Response): Response {
+/**
+ * CORS par allowlist — jamais `*`.
+ *
+ * L'ancienne valeur (`DASHBOARD_ORIGIN` avec repli `*`) autorisait n'importe
+ * quel site à appeler l'API depuis le navigateur d'un gérant connecté. On
+ * réutilise ici l'allowlist qui protège déjà les liens magiques
+ * (`APP_ORIGINS`, cf. `auth.ts`) : l'origine de la requête n'est renvoyée que
+ * si elle y figure, sinon on renvoie l'origine canonique — le navigateur
+ * bloque alors la réponse de lui-même.
+ */
+function corsHeaders(req: Request): Record<string, string> {
+  const origines = allowedOrigins();
+  const demandee = (req.headers.get("origin") ?? "").replace(/\/+$/, "");
+  return {
+    ...CORS_BASE,
+    "access-control-allow-origin": origines.includes(demandee) ? demandee : origines[0],
+  };
+}
+
+function addCors(req: Request, res: Response): Response {
   const headers = new Headers(res.headers);
-  for (const [k, v] of Object.entries(CORS_HEADERS)) {
+  for (const [k, v] of Object.entries(corsHeaders(req))) {
     if (!headers.has(k)) {
       headers.set(k, v);
     }
@@ -46,7 +68,7 @@ function addCors(res: Response): Response {
 
 async function requestHandler(req: Request): Promise<Response> {
   if (req.method === "OPTIONS") {
-    return new Response(null, { status: 204, headers: CORS_HEADERS });
+    return new Response(null, { status: 204, headers: corsHeaders(req) });
   }
 
   const url = new URL(req.url);
@@ -55,7 +77,7 @@ async function requestHandler(req: Request): Promise<Response> {
   try {
     // 1. Health check API
     if (path === "/health" || (path === "/" && req.headers.get("accept")?.includes("application/json"))) {
-      return addCors(Response.json({
+      return addCors(req, Response.json({
         ok: true,
         service: "setwise-backend",
         version: "2.0.0",
@@ -67,65 +89,74 @@ async function requestHandler(req: Request): Promise<Response> {
     // 2. Webhooks Meta
     if (path === "/webhooks/instagram") {
       const res = await handleInstagramWebhook(req);
-      return addCors(res);
+      return addCors(req, res);
     }
     if (path === "/webhooks/whatsapp") {
       const res = await handleWhatsAppWebhook(req);
-      return addCors(res);
+      return addCors(req, res);
     }
 
     // 3. Webhook Stripe
     if (path === "/webhooks/stripe") {
       const res = await handleStripeWebhook(req);
-      return addCors(res);
+      return addCors(req, res);
     }
 
     // 4. Authentification
     if (path === "/api/auth/magic-link") {
       const res = await handleSendMagicLink(req);
-      return addCors(res);
+      return addCors(req, res);
     }
     if (path === "/api/auth/verify") {
       const res = await handleVerifyMagicLink(req);
-      return addCors(res);
+      return addCors(req, res);
     }
     if (path === "/api/auth/me") {
       const res = await handleGetMe(req);
-      return addCors(res);
+      return addCors(req, res);
     }
 
     // 5. Crons
     if (path.startsWith("/crons/")) {
       const res = await handleCrons(req, url);
-      return addCors(res);
+      return addCors(req, res);
     }
 
     // 6. Dashboard REST API & Actions
     if (path.startsWith("/api/")) {
       const res = await handleDashboardApi(req, url);
-      return addCors(res);
+      return addCors(req, res);
     }
 
     // 7. Fichiers statiques (Dashboard, Site, OAuth)
     const staticRes = await serveStaticFile(req, path);
     if (staticRes) {
-      return addCors(staticRes);
+      return addCors(req, staticRes);
     }
 
-    return addCors(new Response("Not Found", { status: 404 }));
+    return addCors(req, new Response("Not Found", { status: 404 }));
   } catch (error) {
     if (error instanceof AuthError) {
-      return addCors(Response.json({ error: error.message }, { status: error.status }));
+      return addCors(req, Response.json({ error: error.message }, { status: error.status }));
+    }
+    if (error instanceof RateLimitError) {
+      const headers = new Headers({ "retry-after": String(error.retryAfterSeconds) });
+      return addCors(req, 
+        new Response(JSON.stringify({ error: error.message }), {
+          status: 429,
+          headers: { ...Object.fromEntries(headers), "content-type": "application/json" },
+        }),
+      );
     }
     if (error instanceof ValidationError) {
-      return addCors(Response.json({ error: error.message }, { status: 400 }));
+      return addCors(req, Response.json({ error: error.message }, { status: 400 }));
     }
     if (error instanceof AppError) {
-      return addCors(Response.json({ error: error.message }, { status: 500 }));
+      return addCors(req, Response.json({ error: error.message }, { status: 500 }));
     }
 
     log.error("server.unhandled_error", { path, error: String(error) });
-    return addCors(Response.json({ error: "Erreur interne du serveur." }, { status: 500 }));
+    return addCors(req, Response.json({ error: "Erreur interne du serveur." }, { status: 500 }));
   }
 }
 

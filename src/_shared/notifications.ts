@@ -12,7 +12,7 @@
 //   WhatsApp  via le compte Business déjà connecté de l'institut, avec un
 //             modèle approuvé. C'est celui qui sonne à 23 h.
 
-import { sql } from "../db.ts";
+import { sqlWorker as sql } from "../db.ts"; // rôle système : BYPASSRLS, hors RLS
 import { optionalEnv, optionalIntEnv } from "./env.ts";
 import { DatabaseError, ExternalApiError, isRetryable, ValidationError } from "./errors.ts";
 import { log, scopedLogger } from "./logger.ts";
@@ -118,6 +118,57 @@ async function sendWhatsApp(notification: ClaimedNotification): Promise<void> {
 // ============================================================
 // Mise en file depuis le moteur d'agent
 // ============================================================
+
+/**
+ * UUID déterministe pour (tenant, mois courant). `notifications` exige un
+ * `subject_id` non nul et porte l'unicité `(kind, subject_id, channel)` : sans
+ * sujet stable, l'avertissement de quota partirait à chaque appel au lieu
+ * d'une fois par mois. Aucune ligne réelle ne correspond à cet identifiant —
+ * il sert uniquement de clé de déduplication.
+ */
+async function monthlySubjectId(tenantId: string): Promise<string> {
+  const mois = new Date().toISOString().slice(0, 7); // "2026-08"
+  const digest = await crypto.subtle.digest(
+    "SHA-256",
+    new TextEncoder().encode(`llm_quota:${tenantId}:${mois}`),
+  );
+  const hex = Array.from(new Uint8Array(digest).slice(0, 16))
+    .map((b) => b.toString(16).padStart(2, "0"))
+    .join("");
+  return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${
+    hex.slice(20, 32)
+  }`;
+}
+
+/**
+ * Alerte à 80 % du quota IA mensuel. Réutilise `enqueue_escalation_notification`
+ * — générique malgré son nom, elle ne fait qu'insérer dans `notifications`
+ * pour les canaux configurés du tenant.
+ */
+export async function queueQuotaWarning(params: {
+  tenantId: string;
+  used: number;
+  limit: number;
+}): Promise<void> {
+  const logger = scopedLogger({ tenantId: params.tenantId });
+  const subjectId = await monthlySubjectId(params.tenantId);
+
+  try {
+    await sql`
+      select queued, channels_configured
+        from enqueue_escalation_notification(
+          ${params.tenantId}::uuid,
+          ${subjectId}::uuid,
+          'llm_quota_warning',
+          ${sql.json({ used: params.used, limit: params.limit })}
+        );
+    `;
+  } catch (error) {
+    // Un avertissement manqué n'est pas critique — contrairement à une
+    // escalade, aucune cliente n'attend de réponse derrière celui-ci.
+    logger.warn("notifications.quota_warning_failed", { error: String(error) });
+  }
+}
 
 export async function queueEscalationAlert(params: {
   tenantId: string;

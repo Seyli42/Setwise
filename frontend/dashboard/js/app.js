@@ -34,6 +34,36 @@ function currentRoute() {
   return ROUTES.find((route) => route.path === path) ?? ROUTES[0];
 }
 
+/**
+ * Bandeau de démonstration.
+ *
+ * Sans lui, rien à l'écran ne distingue la démonstration d'un vrai compte : même
+ * navigation, mêmes chiffres, même mise en page. Un prospect à qui l'on montre
+ * l'outil, puis qui s'inscrit vraiment, peut rester en démonstration sans le
+ * savoir et prendre les rendez-vous fictifs de « L'Échappée Belle » pour les
+ * siens. Le bandeau est volontairement impossible à manquer.
+ */
+function renderDemoBanner() {
+  if (!auth.isDemo()) return null;
+
+  return el("div", { class: "demo-banner" }, [
+    el("span", {
+      class: "demo-banner__text",
+      text: "Démonstration — données fictives. Rien de ce qui s'affiche ici n'est réel.",
+    }),
+    el("button", {
+      class: "btn btn--small",
+      type: "button",
+      text: "Quitter la démonstration",
+      on: {
+        click() {
+          auth.exitDemoMode();
+        },
+      },
+    }),
+  ]);
+}
+
 function renderShell() {
   const nav = el("nav", { class: "nav" }, [
     el("div", { class: "nav__brand", text: "Setwise" }),
@@ -69,7 +99,12 @@ function renderShell() {
   ]);
 
   viewContainer = el("main", { class: "view" });
-  mount(root, el("div", { class: "layout" }, [nav, viewContainer]));
+
+  // Le bandeau passe AVANT la navigation : c'est la première chose lue.
+  mount(
+    root,
+    el("div", { class: "layout" }, [renderDemoBanner(), nav, viewContainer].filter(Boolean)),
+  );
 }
 
 function highlightActiveLink(path) {

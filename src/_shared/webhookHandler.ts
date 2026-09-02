@@ -13,6 +13,7 @@ import { handleVerificationHandshake, parseWebhookBody, verifyMetaSignature } fr
 import { enqueueInboundEvents, type WebhookSource } from "./queue.ts";
 import { processQueue } from "./dispatcher.ts";
 import { log } from "./logger.ts";
+import { enforceRateLimit, RateLimitError } from "./rateLimit.ts";
 import type { ParsedInbound } from "./channels/types.ts";
 
 interface EdgeRuntimeLike {
@@ -82,8 +83,43 @@ export function createMetaWebhookHandler(
       return new Response("EVENT_RECEIVED", { status: 200 });
     }
 
+    // Plafond par compte Meta expéditeur : la signature HMAC prouve que le
+    // POST vient bien de Meta, mais ne borne pas le volume qu'UN compte
+    // particulier peut envoyer — un flot de DM sur un seul institut consomme
+    // la queue et la facture du modèle pour tous les autres. Vérifié après le
+    // parse : c'est le seul moment où l'identifiant du compte est connu.
+    //
+    // Échec OUVERT : Meta rejoue un webhook en échec, une panne du compteur ne
+    // doit jamais transformer une simple limitation en avalanche de retries.
+    const comptesExpediteurs = [...new Set(parsed.map((p) => p.event.externalAccountId))];
+    const comptesAcceptes = new Set<string>();
+
+    for (const compteId of comptesExpediteurs) {
+      try {
+        await enforceRateLimit({
+          bucket: `webhook:${options.source}:${compteId}`,
+          limit: 600,
+          windowSeconds: 60,
+        });
+        comptesAcceptes.add(compteId);
+      } catch (error) {
+        if (error instanceof RateLimitError) {
+          log.warn("webhook.rate_limited", { source: options.source, account: compteId });
+          continue;
+        }
+        throw error;
+      }
+    }
+
+    const accepted = parsed.filter((p) => comptesAcceptes.has(p.event.externalAccountId));
+    if (accepted.length === 0) {
+      // Tous les comptes de ce POST sont au plafond : 200 quand même, sinon
+      // Meta rejoue le même flot excessif indéfiniment.
+      return new Response("EVENT_RECEIVED", { status: 200 });
+    }
+
     try {
-      const { enqueued, duplicates } = await enqueueInboundEvents(options.source, parsed);
+      const { enqueued, duplicates } = await enqueueInboundEvents(options.source, accepted);
       log.info("webhook.enqueued", { source: options.source, enqueued, duplicates });
 
       if (enqueued > 0) {

@@ -35,6 +35,8 @@ import {
   recordOutbound,
   resolveAgentContext,
 } from "./memory.ts";
+import { queueQuotaWarning } from "../notifications.ts";
+import { sqlWorker as sql } from "../../db.ts"; // rôle système : BYPASSRLS, hors RLS
 
 const MAX_TOOL_ITERATIONS = 6;
 
@@ -192,6 +194,54 @@ export async function runAgentTurn(params: RunTurnParams): Promise<EngineResult>
     };
   }
 
+  // --- Garde-fou 5 : quota de conversations IA du plan ----------------------
+  // Chaque tour peut coûter jusqu'à MAX_TOOL_ITERATIONS appels au modèle,
+  // jamais plafonnés jusqu'ici. Un flot de DM ou une boucle d'outils qui ne
+  // converge pas consommait sans limite, sans qu'aucun signal ne remonte côté
+  // exploitant. Vérifié APRÈS les garde-fous gratuits (mot-clé, pièce jointe)
+  // pour ne jamais masquer un vrai motif d'escalade derrière "quota atteint".
+  const quotaRows = await sql`select tenant_llm_quota_state(${agent.tenantId}::uuid) as state;`;
+  const quota = (quotaRows[0]?.state ?? {}) as {
+    used?: number;
+    limit?: number | null;
+    exceeded?: boolean;
+    warning?: boolean;
+  };
+
+  if (quota.exceeded) {
+    const reason = `Quota de conversations IA atteint (${quota.used}/${quota.limit} ce mois-ci)`;
+    await openEscalation({
+      tenantId: agent.tenantId,
+      conversationId: conversation.conversationId,
+      reason,
+      triggeredBy: "external_error",
+    });
+    turnLogger.warn("turn.quota_exceeded", { used: quota.used, limit: quota.limit });
+
+    const handoff = handoffMessage(agent.agentConfig);
+    await deliver({ text: handoff, message, sender, conversation, logger: turnLogger });
+
+    return {
+      conversationId: conversation.conversationId,
+      leadId: conversation.leadId,
+      escalated: true,
+      escalationReason: reason,
+      replyText: handoff,
+      skippedReason: "llm_quota_exceeded",
+    };
+  }
+
+  if (quota.warning && quota.limit != null) {
+    // Fire-and-forget délibéré : l'unicité `(kind, subject_id, channel)` du
+    // sujet mensuel absorbe les appels répétés, un échec ici ne doit jamais
+    // retarder la réponse à la cliente qui attend.
+    void queueQuotaWarning({
+      tenantId: agent.tenantId,
+      used: quota.used ?? 0,
+      limit: quota.limit,
+    });
+  }
+
   // --- Boucle LLM / outils -------------------------------------------------
   const toolContext: ToolContext = {
     agent,
@@ -240,6 +290,21 @@ export async function runAgentTurn(params: RunTurnParams): Promise<EngineResult>
       inputTokens: response.usage.inputTokens,
       outputTokens: response.usage.outputTokens,
       cacheReadTokens: response.usage.cacheReadTokens,
+    });
+
+    // Comptabilisé par appel réel, pas par tour : un tour à trois itérations
+    // d'outils coûte trois appels au modèle, le plafond doit refléter ça.
+    await sql`
+      select record_llm_usage(
+        ${agent.tenantId}::uuid,
+        ${response.usage.inputTokens},
+        ${response.usage.outputTokens}
+      );
+    `.catch((error) => {
+      // Comptage manqué, jamais bloquant : le tour est déjà en cours, refuser
+      // la réponse à cause d'un compteur en panne coûterait plus cher que
+      // l'oubli d'un appel dans la somme du mois.
+      turnLogger.error("turn.usage_record_failed", { error: String(error) });
     });
 
     // Refus des classificateurs : contenu vide ou partiel, jamais exploitable.

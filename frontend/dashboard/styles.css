@@ -229,3 +229,25 @@ input:focus, textarea:focus, select:focus { outline: 2px solid var(--accent); ou
   padding: .6rem 0;
   border-top: 1px solid var(--border);
 }
+
+/* Bandeau de démonstration.
+   Contraste maximal et position en tête : il doit être impossible de le
+   confondre avec un élément décoratif, ou de l'oublier après une minute. */
+.demo-banner {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: .75rem 1.25rem;
+  padding: .7rem 1.5rem;
+  background: var(--warn);
+  color: #fff;
+  font-size: .92rem;
+  text-align: center;
+}
+.demo-banner__text { font-weight: 600; }
+.demo-banner .btn {
+  background: #fff;
+  color: var(--warn);
+  border-color: #fff;
+}

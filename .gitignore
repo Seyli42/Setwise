@@ -9,3 +9,12 @@ frontend/dashboard/vendor/
 node_modules/
 .DS_Store
 ._*
+
+# Sauvegardes de configuration — contiennent les secrets en clair.
+# Le dépôt est public : sans cette ligne, `git add -A` publierait la clé
+# Stripe Live, le mot de passe Neon et les jetons Meta/Resend/DeepSeek.
+.env.backup-*
+.env.*.backup
+*.env.bak
+DEPLOY_ENV.txt
+COMMIT.sh

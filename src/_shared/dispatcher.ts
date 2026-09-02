@@ -10,13 +10,18 @@
 
 import "./bootstrap.ts";
 
-import { sql } from "../db.ts";
+import { sqlWorker as sql } from "../db.ts"; // rôle système : BYPASSRLS, hors RLS
 import { isRetryable } from "./errors.ts";
 import { log, scopedLogger } from "./logger.ts";
 import { attachTenant, claimEvents, completeEvent, failEvent, type QueuedEvent } from "./queue.ts";
 import { runAgentTurn } from "./agent/engine.ts";
 import { getBillingState } from "./billing.ts";
-import { ensureWhatsAppConversation, recordOutbound, resolveAgentContext } from "./agent/memory.ts";
+import {
+  ensureWhatsAppConversation,
+  openEscalation,
+  recordOutbound,
+  resolveAgentContext,
+} from "./agent/memory.ts";
 import { findWhatsAppConnection, resolveConnection } from "./channels/connection.ts";
 import { createInstagramSender } from "./channels/instagram.ts";
 import { createWhatsAppSender, sendWhatsAppTemplate, toWhatsAppNumber } from "./channels/whatsapp.ts";
@@ -54,11 +59,56 @@ export async function processQueue(limit = 10): Promise<ProcessResult> {
         error: String(error),
       });
       await failEvent(event.id, String(error), retryable);
+      if (!retryable) await alerterEchecDefinitif(event, error);
       failed++;
     }
   }
 
   return { claimed: events.length, processed, failed };
+}
+
+/**
+ * Ouvre une escalade quand un message meurt pour de bon.
+ *
+ * Sans cela, un échec définitif ne laissait qu'une ligne `failed` dans
+ * `webhook_events` et une ligne de log. Personne n'était prévenu. Le cas qui
+ * fait mal n'est pas théorique : un jeton Meta expire tous les 60 jours. Le
+ * jour où il expire, l'agent continue de raisonner, consomme des jetons de
+ * modèle, puis échoue à l'envoi — et l'institut perd ses leads sans rien
+ * remarquer, parfois pendant des jours. Le schéma prévoyait déjà ce cas
+ * (`escalation_trigger` a une valeur `external_error`, avec son index) : il
+ * n'était simplement jamais écrit.
+ *
+ * Cette alerte est un chemin de secours : elle ne doit jamais faire tomber le
+ * traitement de l'event suivant, d'où le try/catch qui avale tout.
+ */
+async function alerterEchecDefinitif(event: QueuedEvent, cause: unknown): Promise<void> {
+  try {
+    const raw = event.payload?.event;
+    if (!raw?.externalThreadId) return;
+
+    // La conversation n'existe que si l'échec est survenu APRÈS sa création
+    // (typiquement à l'envoi). Un échec plus tôt — compte inconnu, institut
+    // introuvable — n'a pas d'institut à prévenir : le laisser en `failed`
+    // visible est la bonne réponse, alerter un gérant au hasard ne l'est pas.
+    const rows = await sql`
+      select id, tenant_id
+        from conversations
+       where channel = ${raw.channel}
+         and external_thread_id = ${raw.externalThreadId}
+       limit 1;
+    `;
+    if (rows.length === 0) return;
+
+    await openEscalation({
+      tenantId: rows[0].tenant_id,
+      conversationId: rows[0].id,
+      reason: `Message non délivré au client : ${String(cause)}`,
+      triggeredBy: "external_error",
+    });
+  } catch (error) {
+    log.warn("queue.failure_alert_failed", { eventId: event.id, error: String(error) });
+  }
 }
 
 async function processEvent(event: QueuedEvent): Promise<void> {

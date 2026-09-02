@@ -6,7 +6,7 @@
 // de réponse. C'est le mode de panne le plus coûteux du produit : il frappe
 // tard, quand la confiance est établie.
 
-import { sql } from "../db.ts";
+import { sqlWorker as sql } from "../db.ts"; // rôle système : BYPASSRLS, hors RLS
 import { requireEnv, optionalIntEnv } from "./env.ts";
 import { decryptSecret, encryptSecret } from "./crypto.ts";
 import { ExternalApiError } from "./errors.ts";

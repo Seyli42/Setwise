@@ -21,6 +21,13 @@ export const auth = {
     return localStorage.getItem(DEMO_KEY) === "true";
   },
 
+  /** Quitte la démonstration et ramène à l'écran de connexion. */
+  exitDemoMode() {
+    localStorage.removeItem(DEMO_KEY);
+    localStorage.removeItem(TOKEN_KEY);
+    emitAuth("SIGNED_OUT");
+  },
+
   enableDemoMode() {
     localStorage.setItem(DEMO_KEY, "true");
     localStorage.setItem(TOKEN_KEY, "demo_jwt_token_client_session");
@@ -338,10 +345,13 @@ const DEMO_DATA = {
 };
 
 /**
- * Envoie une requête authentifiée à l'API backend avec repli gracieux en mode démo.
+ * Envoie une requête authentifiée à l'API backend.
+ *
+ * En mode démonstration explicite, sert des données fictives. En dehors, une
+ * erreur remonte toujours comme une erreur — jamais de repli silencieux.
  */
 export async function apiFetch(path, options = {}) {
-  // Si mode Démo forcé ou navigation hors ligne
+  // Démonstration explicitement activée par l'utilisateur, jamais par défaut.
   if (auth.isDemo()) {
     const cleanPath = path.split("?")[0];
     if (DEMO_DATA[cleanPath]) {
@@ -384,10 +394,27 @@ export async function apiFetch(path, options = {}) {
     }
     return data;
   } catch (err) {
-    // Si la requête échoue pour cause de réseau, on bascule gracieusement sur les données de démo
-    const cleanPath = path.split("?")[0];
-    if (DEMO_DATA[cleanPath]) {
-      return DEMO_DATA[cleanPath];
+    // JAMAIS de repli sur les données de démonstration ici.
+    //
+    // Ce bloc renvoyait `DEMO_DATA` dès qu'une requête échouait — panne réseau,
+    // mais aussi 500, 403 ou 401, puisque le `throw` ci-dessus passe par ce
+    // `catch`. Un institut qui paie voyait donc apparaître les rendez-vous et
+    // les conversations de « L'Échappée Belle » à la place des siens, sans rien
+    // qui les distingue des vrais. Un gérant pouvait lire « RDV confirmé
+    // samedi 14 h 30 » pour une cliente qui n'existe pas, ou voir zéro escalade
+    // pendant qu'une vraie question médicale attend.
+    //
+    // Effet de bord tout aussi grave : toute panne du backend devenait
+    // invisible, chaque tableau de bord paraissant en bonne santé.
+    //
+    // Une erreur doit se voir. C'est tout.
+    if (err instanceof TypeError) {
+      // `fetch` ne lève un TypeError que sur un échec réseau : serveur
+      // injoignable, DNS, CORS. Le distinguer d'une erreur applicative évite
+      // d'envoyer le gérant chercher un problème dans ses données.
+      throw new Error(
+        "Serveur injoignable. Vérifiez votre connexion : aucune donnée n'a pu être chargée.",
+      );
     }
     throw err;
   }
