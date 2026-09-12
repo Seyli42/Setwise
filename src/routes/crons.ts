@@ -7,17 +7,18 @@ import { sendDueReminders } from "../_shared/reminders.ts";
 import { runOutboundCampaigns } from "../_shared/outbound.ts";
 import { refreshExpiringTokens } from "../_shared/metaTokens.ts";
 import { deliverPendingNotifications } from "../_shared/notifications.ts";
+import { timingSafeEqual } from "../_shared/meta.ts";
 import { sqlWorker as sql } from "../db.ts"; // rôle système : BYPASSRLS, hors RLS
 
 /**
  * Comparaison à temps constant : un `===` sur une chaîne sort au premier
  * caractère différent, ce qui laisse deviner le secret octet par octet.
+ * Réutilise l'implémentation de `meta.ts` (signature webhook) plutôt que
+ * d'en garder une seconde copie pour ce secret-ci.
  */
 function secretsEqual(a: string, b: string): boolean {
-  if (a.length !== b.length) return false;
-  let diff = 0;
-  for (let i = 0; i < a.length; i++) diff |= a.charCodeAt(i) ^ b.charCodeAt(i);
-  return diff === 0;
+  const encoder = new TextEncoder();
+  return timingSafeEqual(encoder.encode(a), encoder.encode(b));
 }
 
 /**

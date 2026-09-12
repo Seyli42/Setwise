@@ -13,6 +13,7 @@
 // RLS forcée. Le rôle applicatif y échouerait, par construction.
 
 import postgres from "npm:postgres@^3.4.5";
+import { hashToken } from "../src/auth.ts";
 
 function arg(nom: string): string | undefined {
   const prefixe = `--${nom}=`;
@@ -36,11 +37,6 @@ if (!url) {
 }
 
 const sql = postgres(url, { ssl: url.includes("localhost") ? false : "require", max: 1 });
-
-async function hashToken(token: string): Promise<string> {
-  const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(token));
-  return Array.from(new Uint8Array(digest)).map((b) => b.toString(16).padStart(2, "0")).join("");
-}
 
 try {
   // 1. Utilisateur

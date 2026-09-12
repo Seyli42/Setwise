@@ -294,7 +294,10 @@ export async function runAgentTurn(params: RunTurnParams): Promise<EngineResult>
 
     // Comptabilisé par appel réel, pas par tour : un tour à trois itérations
     // d'outils coûte trois appels au modèle, le plafond doit refléter ça.
-    await sql`
+    // Fire-and-forget : le commentaire ci-dessous décrivait déjà ce
+    // comportement voulu, mais le `await` le contredisait — chaque itération
+    // attendait ce round-trip avant l'appel modèle suivant.
+    void sql`
       select record_llm_usage(
         ${agent.tenantId}::uuid,
         ${response.usage.inputTokens},

@@ -19,7 +19,7 @@ function hexToBytes(hex: string): Uint8Array | null {
 }
 
 /** Comparaison à temps constant : une comparaison naïve fuite la signature octet par octet. */
-function timingSafeEqual(a: Uint8Array, b: Uint8Array): boolean {
+export function timingSafeEqual(a: Uint8Array, b: Uint8Array): boolean {
   if (a.byteLength !== b.byteLength) return false;
   let diff = 0;
   for (let i = 0; i < a.byteLength; i++) diff |= a[i] ^ b[i];

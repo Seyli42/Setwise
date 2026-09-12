@@ -22,9 +22,16 @@
 //   - `sqlWorker\`...\`` (rôle système, BYPASSRLS) est la dérogation
 //     explicite d'aujourd'hui : elle mérite la même justification que l'ancien
 //     filtre manquant, parce qu'aucune policy ne la rattrape.
-// `tx\`...\`` n'est jamais signalé : le type `TransactionSql` n'existe que
-// dans le callback de `withTenant`, donc l'écrire hors de ce contexte est déjà
-// une erreur de compilation — inutile de le revérifier ici.
+// `tx\`...\`` n'est jamais signalé : la seule source de `tx` dans ces fichiers
+// est le callback de `withTenant` (voir la vérification `.begin(` ci-dessous),
+// où la RLS impose déjà l'isolation quel que soit le texte de la requête.
+// Attention : `sql`/`sqlWorker` restent tous deux typés `postgres.Sql`, qui
+// expose publiquement `.begin(...)` — TypeScript n'interdit PAS d'appeler
+// `sqlWorker.begin(async (tx) => ...)` directement dans ces fichiers, ce qui
+// produirait un vrai `tx` (BYPASSRLS, `app.tenant_id` jamais posé) invisible
+// à la règle ci-dessus. C'est pour ça que le test signale aussi tout appel
+// `.begin(` dans ces fichiers hors de `db.ts` : seul `withTenant` a le droit
+// d'en ouvrir un.
 //
 // Lancer : deno test --allow-read src/routes/tenant_scoping_test.ts
 
@@ -91,6 +98,21 @@ function analyser(fichier: string, source: string): Manquement[] {
     });
   }
 
+  // Seul `withTenant` (dans `db.ts`) a le droit d'ouvrir une transaction : un
+  // `sql.begin(...)` ou `sqlWorker.begin(...)` écrit directement dans ces
+  // fichiers produirait un `tx` non couvert par la règle ci-dessus (elle
+  // exempte `tx` sans condition), avec le rôle et la portée de celui qui
+  // appelle `.begin(` — potentiellement `sqlWorker`, donc BYPASSRLS et sans
+  // `app.tenant_id` posé.
+  for (const correspondance of source.matchAll(/\b(?:sql|sqlWorker)\s*\.\s*begin\s*\(/g)) {
+    const ligne = source.slice(0, correspondance.index).split("\n").length;
+    manquements.push({
+      fichier,
+      ligne,
+      requete: `${correspondance[0]}… — seul withTenant (db.ts) doit ouvrir une transaction ici`,
+    });
+  }
+
   return manquements;
 }
 
@@ -153,6 +175,14 @@ Deno.test("les requêtes `tx` ne sont jamais signalées, protégées par la RLS"
   // déjà l'isolation quel que soit le texte de la requête.
   const viaTx = "const rows = await tx`select id from leads where status = 'new';`;";
   assertEquals(analyser("test.ts", viaTx).length, 0);
+});
+
+Deno.test("le garde-fou repère un `.begin(` ouvert hors de withTenant", () => {
+  const contournement = "await sqlWorker.begin(async (tx) => { await tx`select id from leads`; });";
+  assertEquals(analyser("test.ts", contournement).length, 1);
+
+  const viaSqlAussi = "await sql.begin(async (tx) => { await tx`select id from leads`; });";
+  assertEquals(analyser("test.ts", viaSqlAussi).length, 1);
 });
 
 Deno.test("`sqlWorker` sur une table métier exige la même justification que `sql`", () => {

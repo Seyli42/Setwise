@@ -94,21 +94,30 @@ export function createMetaWebhookHandler(
     const comptesExpediteurs = [...new Set(parsed.map((p) => p.event.externalAccountId))];
     const comptesAcceptes = new Set<string>();
 
-    for (const compteId of comptesExpediteurs) {
-      try {
-        await enforceRateLimit({
-          bucket: `webhook:${options.source}:${compteId}`,
-          limit: 600,
-          windowSeconds: 60,
-        });
-        comptesAcceptes.add(compteId);
-      } catch (error) {
-        if (error instanceof RateLimitError) {
-          log.warn("webhook.rate_limited", { source: options.source, account: compteId });
-          continue;
+    // Comptes indépendants, buckets indépendants : vérifiés en parallèle plutôt
+    // qu'un round-trip Neon par compte l'un après l'autre — ce chemin répond à
+    // Meta sous ~20 s, un lot multi-comptes ne doit pas manger ce budget.
+    const resultats = await Promise.all(
+      comptesExpediteurs.map(async (compteId) => {
+        try {
+          await enforceRateLimit({
+            bucket: `webhook:${options.source}:${compteId}`,
+            limit: 600,
+            windowSeconds: 60,
+          });
+          return { compteId, accepte: true } as const;
+        } catch (error) {
+          if (error instanceof RateLimitError) {
+            log.warn("webhook.rate_limited", { source: options.source, account: compteId });
+            return { compteId, accepte: false } as const;
+          }
+          throw error;
         }
-        throw error;
-      }
+      }),
+    );
+
+    for (const { compteId, accepte } of resultats) {
+      if (accepte) comptesAcceptes.add(compteId);
     }
 
     const accepted = parsed.filter((p) => comptesAcceptes.has(p.event.externalAccountId));

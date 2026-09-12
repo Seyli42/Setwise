@@ -17,4 +17,5 @@ node_modules/
 .env.*.backup
 *.env.bak
 DEPLOY_ENV.txt
-COMMIT.sh
+PUSH.sh
+TESTER_EN_LOCAL.md

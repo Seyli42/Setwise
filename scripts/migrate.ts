@@ -76,41 +76,43 @@ async function runMigrations() {
     entries.sort();
 
     let count = 0;
+    let arretDemande = false;
     for (const filename of entries) {
       if (applied.has(filename)) {
         console.log(`⏩ Migration déjà appliquée : ${filename}`);
-        // BUG CORRIGÉ : ce `continue` sautait par-dessus la vérification
-        // MIGRATE_UNTIL plus bas, qui n'existait que sur le chemin
-        // "fraîchement appliquée". Une migration DÉJÀ appliquée qui se trouve
-        // être la borne demandée doit arrêter l'exécution tout autant qu'une
-        // migration qu'on vient d'appliquer — sinon un second run avec le
-        // même MIGRATE_UNTIL continue tout droit au-delà, silencieusement.
-        if (filename === migrateUntil) {
-          console.log(`⏸️  Arrêt demandé après ${filename} (MIGRATE_UNTIL, déjà appliquée).`);
-          break;
-        }
-        continue;
+      } else {
+        console.log(`⏳ Application de la migration : ${filename}...`);
+        const filePath = `${migrationsDir}/${filename}`;
+        const content = await Deno.readTextFile(filePath);
+
+        await sql.begin(async (tx) => {
+          await tx.unsafe(content);
+          await tx`insert into _migrations (name) values (${filename});`;
+        });
+
+        console.log(`✅ Migration appliquée avec succès : ${filename}`);
+        count++;
       }
 
-      console.log(`⏳ Application de la migration : ${filename}...`);
-      const filePath = `${migrationsDir}/${filename}`;
-      const content = await Deno.readTextFile(filePath);
-
-      await sql.begin(async (tx) => {
-        await tx.unsafe(content);
-        await tx`insert into _migrations (name) values (${filename});`;
-      });
-
-      console.log(`✅ Migration appliquée avec succès : ${filename}`);
-      count++;
-
+      // Vérifié après les deux branches (appliquée à l'instant ou déjà en
+      // base) : une migration déjà appliquée qui se trouve être la borne
+      // demandée doit arrêter l'exécution tout autant qu'une migration qu'on
+      // vient d'appliquer — sinon un second run avec le même MIGRATE_UNTIL
+      // continue tout droit au-delà, silencieusement.
       if (filename === migrateUntil) {
         console.log(`⏸️  Arrêt demandé après ${filename} (MIGRATE_UNTIL).`);
+        arretDemande = true;
         break;
       }
     }
 
-    if (count === 0) {
+    const dernierFichier = entries[entries.length - 1];
+    if (arretDemande && migrateUntil !== dernierFichier) {
+      // Ne jamais dire « à jour » quand l'arrêt est volontaire et que des
+      // migrations existent après la borne demandée — c'est justement le cas
+      // qui a fait tourner ce script en rond lors de la bascule RLS.
+      console.log(`⏸️  Exécution arrêtée après ${migrateUntil} — des migrations restent en attente au-delà.`);
+    } else if (count === 0) {
       console.log("✨ La base de données est déjà à jour.");
     } else {
       console.log(`🎉 ${count} migration(s) appliquée(s) avec succès sur Neon.`);
