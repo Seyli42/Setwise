@@ -64,8 +64,8 @@ liens `https://dashboard.setwise.fr` dans les quatre pages de
 
 | Service | Ce qu'il faut | Délai réaliste |
 |---|---|---|
-| Supabase | Projet en région **EU** | immédiat |
-| Anthropic | Clé API, facturation active | immédiat |
+| Neon | Projet en région **EU** | immédiat |
+| DeepSeek (fallback Anthropic) | Clé API, facturation active | immédiat |
 | Meta for Developers | Compte développeur, application, **vérification métier** | quelques jours à plusieurs semaines |
 | WhatsApp Business | Numéro dédié, modèles soumis à validation | 1 à 3 jours par modèle |
 | Google Cloud | Projet, Calendar API, écran de consentement **publié** | quelques jours si vérification demandée |
@@ -89,10 +89,10 @@ chaque institut perd son agenda sans prévenir.
 
 ## 4. Décisions produit à prendre avant le premier client
 
-- **Tarifs.** 149 / 299 / 599 € par mois figurent sur la page d'accueil et
+- **Tarifs.** 25 / 97 / 297 € par mois figurent sur la page d'accueil et
   doivent correspondre exactement aux tarifs créés dans Stripe, puis reportés
   dans la table `plans`.
-- **Essai gratuit.** 14 jours sans carte, écrit dans `plans.trial_days`, sur la
+- **Essai gratuit.** 7 jours sans carte (Light : 0 jour), écrit dans `plans.trial_days`, sur la
   page d'accueil et dans les CGV. Changer la durée impose de changer les trois.
 - **Durée de conservation par défaut.** 1095 jours (3 ans depuis le dernier
   contact), conforme à la recommandation CNIL en matière de prospection.
@@ -105,7 +105,7 @@ chaque institut perd son agenda sans prévenir.
 
 ## 5. Documents à produire hors dépôt
 
-- **DPA signés** avec Anthropic, Meta, Google, Stripe, Supabase et Hostinger.
+- **DPA signés** avec DeepSeek, Anthropic, Meta, Google, Stripe, Neon et Hostinger.
   Setwise agit comme sous-traitant des instituts ; ces accords sont le maillon
   suivant de la chaîne.
 - **Registre des traitements**, obligatoire même pour une entreprise

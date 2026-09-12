@@ -45,7 +45,7 @@ Le moteur d'agent ne connaît pas la facturation : il reçoit un drapeau
 | Statut Stripe | Agent | Pourquoi |
 |---|---|---|
 | `trialing`, `active` | actif | |
-| `past_due` | **actif** | Stripe relance le paiement pendant ~3 semaines. Couper au premier refus punirait un institut pour une carte expirée — et lui ferait perdre des clients pour 149 €. |
+| `past_due` | **actif** | Stripe relance le paiement pendant ~3 semaines. Couper au premier refus punirait un institut pour une carte expirée — et lui ferait perdre des clients pour 97 €. |
 | `unpaid`, `canceled`, `incomplete_expired`, `paused` | suspendu | |
 | aucun abonnement | essai depuis la création du compte, puis suspendu | |
 
